@@ -9,13 +9,23 @@
   <body>
     <div class="auth-shell">
       <div class="auth-card">
-        <h1>DB Wizard</h1>
-        <p class="muted">Secure multi-database workspace</p>
+        <div class="auth-topbar">
+          <div class="brand-wrap">
+            <div class="brand-badge">DB</div>
+            <div>
+              <h1>DB Wizard</h1>
+              <p class="muted">Modern database access for teams</p>
+            </div>
+          </div>
+          <span class="chip">Secure Workspace</span>
+        </div>
+
         <p id="error" class="error hidden"></p>
 
         <div class="auth-grid">
           <section class="panel">
             <h2>Sign in</h2>
+            <p class="muted">Access your connections and SQL workspace.</p>
             <form id="login-form">
               <label>Username<input name="username" required /></label>
               <label>Password<input type="password" name="password" required /></label>
@@ -25,6 +35,7 @@
 
           <section class="panel">
             <h2>Create account</h2>
+            <p class="muted">Create a local account in seconds.</p>
             <form id="register-form">
               <label>Username<input name="username" required /></label>
               <label>Password<input type="password" name="password" required /></label>
@@ -35,6 +46,7 @@
 
         <section class="panel">
           <h2>Organization Login</h2>
+          <p class="muted">Use Google, GitHub, or Azure AD when configured.</p>
           <div id="oauth-buttons" class="oauth-buttons"></div>
         </section>
       </div>

@@ -9,9 +9,12 @@
   <body>
     <div class="app-shell">
       <header class="app-header">
-        <div>
-          <h1>DB Wizard</h1>
-          <p id="workspace-subtitle" class="muted">SQL Workspace</p>
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>SQL Workspace</h1>
+            <p id="workspace-subtitle" class="muted">Run and manage read-only SQL</p>
+          </div>
         </div>
         <div class="header-actions">
           <a href="/dashboard" class="button secondary">Back to Dashboard</a>
@@ -40,7 +43,7 @@
           <label>Query Name
             <input id="query-name" placeholder="e.g. Monthly Revenue" />
           </label>
-          <textarea id="query-text" class="sql-editor" rows="10">SELECT 1 as ok;</textarea>
+          <textarea id="query-text" class="sql-editor" rows="11">SELECT 1 as ok;</textarea>
 
           <div class="actions-row">
             <button id="run-query-btn">Run Query</button>
@@ -49,10 +52,12 @@
 
           <div id="result-wrap" class="result-wrap hidden">
             <h4>Result</h4>
-            <table>
-              <thead><tr id="result-head"></tr></thead>
-              <tbody id="result-body"></tbody>
-            </table>
+            <div class="table-scroll">
+              <table>
+                <thead><tr id="result-head"></tr></thead>
+                <tbody id="result-body"></tbody>
+              </table>
+            </div>
           </div>
         </main>
       </section>

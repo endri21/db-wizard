@@ -9,15 +9,33 @@
   <body>
     <div class="app-shell">
       <header class="app-header">
-        <div>
-          <h1>DB Wizard</h1>
-          <p class="muted">Connection Management</p>
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>Connection Dashboard</h1>
+            <p class="muted">Manage data sources and launch SQL workspaces</p>
+          </div>
         </div>
         <div class="header-actions">
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
       </header>
+
+      <section class="stat-grid">
+        <div class="stat-card">
+          <div class="label">Supported Engines</div>
+          <div class="value">3</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Read-only Guard</div>
+          <div class="value">Enabled</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Workspace Mode</div>
+          <div class="value">Enterprise</div>
+        </div>
+      </section>
 
       <p id="error" class="error hidden"></p>
 
@@ -33,7 +51,7 @@
             </select>
           </label>
           <label class="full">Connection String<input name="connection_string" placeholder="postgresql://user:pass@host:5432/db" /></label>
-          <p class="full muted">Or fill server credentials:</p>
+          <p class="full muted">Or provide individual server credentials.</p>
           <label>Server<input name="server" /></label>
           <label>Port<input name="port" /></label>
           <label>Database<input name="database_name" /></label>
