@@ -64,7 +64,7 @@ async function listTables(conn) {
     return result.recordset.map((r) => r.TABLE_NAME);
   }
 
-  throw new Error(`Unsupported engine: ${conn.engine}`);
+  throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
 }
 
 async function runQuery(conn, query) {
@@ -113,7 +113,7 @@ async function runQuery(conn, query) {
     };
   }
 
-  throw new Error(`Unsupported engine: ${conn.engine}`);
+  throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
 }
 
 module.exports = { listTables, runQuery };

@@ -107,7 +107,8 @@ app.get("/api/me", (req, res) => {
 });
 
 app.post("/api/logout", (req, res) => {
-  req.logout(() => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ error: "Logout failed." });
     req.session.destroy(() => res.json({ message: "Logged out" }));
   });
 });

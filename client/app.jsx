@@ -284,13 +284,13 @@ function App() {
           <label>Connection Name<input value={connForm.name} onChange={(e) => setConnForm({ ...connForm, name: e.target.value })} /></label>
           <label>Engine
             <select value={connForm.engine} onChange={(e) => setConnForm({ ...connForm, engine: e.target.value })}>
-                            <option value="postgresql">PostgreSQL</option>
+              <option value="postgresql">PostgreSQL</option>
               <option value="mysql">MySQL</option>
               <option value="mssql">MSSQL</option>
             </select>
           </label>
           <label className="full">Connection String<input value={connForm.connection_string} onChange={(e) => setConnForm({ ...connForm, connection_string: e.target.value })} /></label>
-          <p className="full muted">Or server credentials:</p>
+          <p className="full muted">Supported engines: PostgreSQL, MySQL, MSSQL. Or use server credentials:</p>
           <label>Server<input value={connForm.server} onChange={(e) => setConnForm({ ...connForm, server: e.target.value })} /></label>
           <label>Port<input value={connForm.port} onChange={(e) => setConnForm({ ...connForm, port: e.target.value })} /></label>
           <label>Database<input value={connForm.database_name} onChange={(e) => setConnForm({ ...connForm, database_name: e.target.value })} /></label>

@@ -35,7 +35,9 @@ function readState() {
 }
 
 function writeState(state) {
-  fs.writeFileSync(dbFile, JSON.stringify(state, null, 2));
+  const tmpFile = `${dbFile}.tmp`;
+  fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2));
+  fs.renameSync(tmpFile, dbFile);
 }
 
 function nextId(state, tableName) {
