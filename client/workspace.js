@@ -1,5 +1,6 @@
 let editingSavedQueryId = null;
 let currentEngine = "postgresql";
+let activeContextMenu = null;
 
 function connectionIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -56,6 +57,36 @@ function tableSelectTemplate(engine, schema, table) {
   return `SELECT *\nFROM "${schema}"."${table}"\nLIMIT 200;`;
 }
 
+function tableUpdateTemplate(engine, schema, table) {
+  if (engine === "mysql") {
+    return `UPDATE \`${schema}\`.\`${table}\`\nSET column_name = 'new_value'\nWHERE condition;`;
+  }
+  if (engine === "mssql") {
+    return `UPDATE [${schema}].[${table}]\nSET column_name = 'new_value'\nWHERE condition;`;
+  }
+  return `UPDATE "${schema}"."${table}"\nSET column_name = 'new_value'\nWHERE condition;`;
+}
+
+function tableInsertTemplate(engine, schema, table) {
+  if (engine === "mysql") {
+    return `INSERT INTO \`${schema}\`.\`${table}\` (column1, column2)\nVALUES ('value1', 'value2');`;
+  }
+  if (engine === "mssql") {
+    return `INSERT INTO [${schema}].[${table}] (column1, column2)\nVALUES ('value1', 'value2');`;
+  }
+  return `INSERT INTO "${schema}"."${table}" (column1, column2)\nVALUES ('value1', 'value2');`;
+}
+
+function schemaStructureTemplate(engine, schema) {
+  if (engine === "mysql") {
+    return `SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE TABLE_SCHEMA = '${schema}'\nORDER BY TABLE_NAME, ORDINAL_POSITION;`;
+  }
+  if (engine === "mssql") {
+    return `SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, IS_NULLABLE\nFROM INFORMATION_SCHEMA.COLUMNS\nWHERE TABLE_SCHEMA = '${schema}'\nORDER BY TABLE_NAME, ORDINAL_POSITION;`;
+  }
+  return `SELECT table_name, column_name, data_type, is_nullable\nFROM information_schema.columns\nWHERE table_schema = '${schema}'\nORDER BY table_name, ordinal_position;`;
+}
+
 function procedureInspectTemplate(engine, schema, procedure) {
   if (engine === "mysql") {
     return `SHOW CREATE PROCEDURE \`${schema}\`.\`${procedure}\`;`;
@@ -66,6 +97,54 @@ function procedureInspectTemplate(engine, schema, procedure) {
   }
 
   return `SELECT p.proname AS procedure_name, pg_get_functiondef(p.oid) AS definition\nFROM pg_proc p\nJOIN pg_namespace n ON n.oid = p.pronamespace\nWHERE n.nspname = '${schema}'\n  AND p.proname = '${procedure}';`;
+}
+
+function closeContextMenu() {
+  if (activeContextMenu) {
+    activeContextMenu.remove();
+    activeContextMenu = null;
+  }
+}
+
+function showTableContextMenu({ x, y, schema, table }) {
+  closeContextMenu();
+
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+
+  const options = [
+    {
+      label: "SELECT query",
+      action: () => setEditorQuery(tableSelectTemplate(currentEngine, schema, table), `${schema}.${table}`),
+    },
+    {
+      label: "UPDATE query",
+      action: () => setEditorQuery(tableUpdateTemplate(currentEngine, schema, table), `${schema}.${table}`),
+    },
+    {
+      label: "INSERT query",
+      action: () => setEditorQuery(tableInsertTemplate(currentEngine, schema, table), `${schema}.${table}`),
+    },
+  ];
+
+  options.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "context-item";
+    btn.textContent = opt.label;
+    btn.addEventListener("click", () => {
+      opt.action();
+      showSuccess(`${opt.label} filled.`);
+      closeContextMenu();
+    });
+    menu.appendChild(btn);
+  });
+
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  document.body.appendChild(menu);
+  activeContextMenu = menu;
 }
 
 function renderSchemaTree(schemas = []) {
@@ -91,6 +170,15 @@ function renderSchemaTree(schemas = []) {
     const schemaBody = document.createElement("div");
     schemaBody.className = "schema-body hidden";
 
+    schemaToggle.addEventListener("click", () => {
+      const hidden = schemaBody.classList.toggle("hidden");
+      schemaToggle.textContent = `${hidden ? "▸" : "▾"} ${schemaNode.schema}`;
+
+      const sql = schemaStructureTemplate(currentEngine, schemaNode.schema);
+      setEditorQuery(sql, `${schemaNode.schema}.schema`);
+      showSuccess("Schema structure query filled.");
+    });
+
     const tablesTitle = document.createElement("p");
     tablesTitle.className = "tree-section-title";
     tablesTitle.textContent = `Tables (${schemaNode.tables.length})`;
@@ -107,6 +195,10 @@ function renderSchemaTree(schemas = []) {
         const sql = tableSelectTemplate(currentEngine, schemaNode.schema, table.name);
         setEditorQuery(sql, `${schemaNode.schema}.${table.name}`);
         showSuccess("SELECT query filled for table.");
+      });
+      btn.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        showTableContextMenu({ x: e.clientX, y: e.clientY, schema: schemaNode.schema, table: table.name });
       });
       item.appendChild(btn);
       tablesUl.appendChild(item);
@@ -146,11 +238,6 @@ function renderSchemaTree(schemas = []) {
       procsUl.appendChild(item);
     }
     schemaBody.appendChild(procsUl);
-
-    schemaToggle.addEventListener("click", () => {
-      const hidden = schemaBody.classList.toggle("hidden");
-      schemaToggle.textContent = `${hidden ? "▸" : "▾"} ${schemaNode.schema}`;
-    });
 
     schemaLi.append(schemaToggle, schemaBody);
     tree.appendChild(schemaLi);
@@ -237,6 +324,16 @@ async function loadSavedQueries(connectionId) {
     window.location.href = "/dashboard";
     return;
   }
+
+  document.addEventListener("click", (e) => {
+    if (activeContextMenu && !e.target.closest(".context-menu")) {
+      closeContextMenu();
+    }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeContextMenu();
+  });
+  window.addEventListener("scroll", closeContextMenu, true);
 
   try {
     const user = await requireUserOrRedirect();
