@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Workspace</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>SQL Workspace</h1>
+            <p id="workspace-subtitle" class="muted">Run and manage read-only SQL</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <a href="/dashboard" class="button secondary">Back to Dashboard</a>
+          <span id="user-chip" class="chip"></span>
+          <button id="logout-btn" class="secondary">Logout</button>
+        </div>
+      </header>
+
+            <section class="workspace-enterprise">
+        <aside class="panel left-rail">
+          <h3>Schemas & Tables</h3>
+          <ul id="schema-tree" class="schema-tree"></ul>
+
+          <h3>Saved Queries</h3>
+          <ul id="saved-query-list" class="saved-query-list"></ul>
+        </aside>
+
+        <main class="panel ide-panel">
+          <div class="ide-header">
+            <h3>SQL IDE</h3>
+            <span id="connection-chip" class="chip"></span>
+          </div>
+
+          <label>Query Name
+            <input id="query-name" placeholder="e.g. Monthly Revenue" />
+          </label>
+          <textarea id="query-text" class="sql-editor" rows="11">SELECT 1 as ok;</textarea>
+
+          <div class="actions-row">
+            <button id="run-query-btn">Run Query</button>
+            <button id="save-query-btn" class="secondary">Save Query</button>
+          </div>
+
+          <div id="result-wrap" class="result-wrap hidden">
+            <h4>Result</h4>
+            <div class="table-scroll">
+              <table>
+                <thead><tr id="result-head"></tr></thead>
+                <tbody id="result-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </section>
+    </div>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/workspace.js"></script>
+  </body>
+</html>
