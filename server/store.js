@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const { Pool } = require("pg");
+const { encryptSecret, decryptSecret } = require("./crypto");
 
 function resolveConnectionString() {
   return (
@@ -21,6 +22,21 @@ function resolveSslConfig() {
     String(process.env.APP_DATABASE_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true";
 
   return { rejectUnauthorized };
+}
+
+function toPublicConnection(row) {
+  if (!row) return null;
+  const { connection_string, db_password, ...rest } = row;
+  return rest;
+}
+
+function toInternalConnection(row) {
+  if (!row) return null;
+  return {
+    ...row,
+    connection_string: decryptSecret(row.connection_string),
+    db_password: decryptSecret(row.db_password),
+  };
 }
 
 let pool;
@@ -106,15 +122,18 @@ async function listConnectionsByUserId(userId) {
     "SELECT * FROM db_connections WHERE user_id = $1 ORDER BY id DESC",
     [Number(userId)]
   );
-  return rows;
+  return rows.map(toPublicConnection);
 }
 
-async function findConnectionByIdAndUser(connectionId, userId) {
+async function findConnectionByIdAndUser(connectionId, userId, options = {}) {
   const { rows } = await getPool().query(
     "SELECT * FROM db_connections WHERE id = $1 AND user_id = $2",
     [Number(connectionId), Number(userId)]
   );
-  return rows[0] || null;
+  const row = rows[0] || null;
+  if (!row) return null;
+  if (options.includeSecrets) return toInternalConnection(row);
+  return toPublicConnection(row);
 }
 
 async function createConnection(payload) {
@@ -127,15 +146,15 @@ async function createConnection(payload) {
       Number(payload.user_id),
       payload.name,
       payload.engine,
-      payload.connection_string || null,
+      encryptSecret(payload.connection_string || null),
       payload.server || null,
       payload.port || null,
       payload.database_name || null,
       payload.db_username || null,
-      payload.db_password || null,
+      encryptSecret(payload.db_password || null),
     ]
   );
-  return rows[0];
+  return toPublicConnection(rows[0]);
 }
 
 async function listSavedQueries(userId, connectionId) {
