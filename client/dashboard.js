@@ -1,12 +1,7 @@
 let editingConnectionId = null;
-let latestConnections = [];
 
 function setDashboardStats(connections) {
-  const total = connections.length;
-  const engines = new Set(connections.map((c) => c.engine)).size;
-
-  document.getElementById("total-connections").textContent = String(total);
-  document.getElementById("engines-used").textContent = String(engines);
+  document.title = `DB Wizard | Dashboard (${connections.length})`;
 }
 
 function openModal() {
@@ -41,10 +36,22 @@ function startEditConnection(conn) {
   openModal();
 }
 
+function getPayloadFromForm() {
+  const form = new FormData(document.getElementById("connection-form"));
+  return {
+    name: form.get("name"),
+    engine: form.get("engine"),
+    connection_string: form.get("connection_string"),
+    server: form.get("server"),
+    port: form.get("port"),
+    database_name: form.get("database_name"),
+    db_username: form.get("db_username"),
+    db_password: form.get("db_password"),
+  };
+}
+
 async function loadConnections() {
   const connections = await apiRequest("/api/connections");
-  latestConnections = connections;
-
   const list = document.getElementById("connection-list");
   list.innerHTML = "";
   setDashboardStats(connections);
@@ -52,7 +59,7 @@ async function loadConnections() {
   if (!connections.length) {
     const li = document.createElement("li");
     li.className = "panel muted";
-    li.textContent = "No databases connected yet. Use '+ Add Connection' to get started.";
+    li.textContent = "No workspaces yet. Click '+ Add Connection' to create one.";
     list.appendChild(li);
     return;
   }
@@ -64,26 +71,29 @@ async function loadConnections() {
     const top = document.createElement("div");
     top.className = "resource-card-top";
 
+    const titleWrap = document.createElement("div");
     const title = document.createElement("h3");
     title.textContent = conn.name;
+    const subtitle = document.createElement("p");
+    subtitle.className = "muted";
+    subtitle.textContent = conn.database_name || conn.server || "Connection configured";
+    titleWrap.append(title, subtitle);
 
     const chip = document.createElement("span");
     chip.className = "chip";
     chip.textContent = conn.engine.toUpperCase();
 
-    top.append(title, chip);
+    top.append(titleWrap, chip);
 
-    const details = document.createElement("p");
-    details.className = "muted";
-    details.textContent = conn.database_name
-      ? `Database: ${conn.database_name}`
-      : "Using server credentials";
+    const meta = document.createElement("p");
+    meta.className = "muted";
+    meta.textContent = `Host: ${conn.server || "from connection string"} • Port: ${conn.port || "default"}`;
 
     const actions = document.createElement("div");
     actions.className = "actions-row";
 
     const openBtn = document.createElement("button");
-    openBtn.textContent = "Open Workspace";
+    openBtn.textContent = "Open";
     openBtn.addEventListener("click", () => {
       window.location.href = `/workspace/${conn.id}`;
     });
@@ -97,6 +107,8 @@ async function loadConnections() {
     deleteBtn.className = "danger";
     deleteBtn.textContent = "Delete";
     deleteBtn.addEventListener("click", async () => {
+      const ok = window.confirm(`Delete workspace '${conn.name}'? This will also delete its saved queries.`);
+      if (!ok) return;
       try {
         await apiRequest(`/api/connections/${conn.id}`, { method: "DELETE" });
         showSuccess("Workspace deleted.");
@@ -107,7 +119,7 @@ async function loadConnections() {
     });
 
     actions.append(openBtn, editBtn, deleteBtn);
-    li.append(top, details, actions);
+    li.append(top, meta, actions);
     list.appendChild(li);
   });
 }
@@ -127,6 +139,7 @@ async function loadConnections() {
       resetConnectionForm();
       openModal();
     });
+
     document.getElementById("close-connection-modal-btn").addEventListener("click", () => {
       closeModal();
       resetConnectionForm();
@@ -139,19 +152,22 @@ async function loadConnections() {
       }
     });
 
+    document.getElementById("test-connection-btn").addEventListener("click", async () => {
+      try {
+        const payload = getPayloadFromForm();
+        const result = await apiRequest("/api/connections/test", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        showSuccess(result.message || "Connection test succeeded.");
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+
     document.getElementById("connection-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const form = new FormData(e.target);
-      const payload = {
-        name: form.get("name"),
-        engine: form.get("engine"),
-        connection_string: form.get("connection_string"),
-        server: form.get("server"),
-        port: form.get("port"),
-        database_name: form.get("database_name"),
-        db_username: form.get("db_username"),
-        db_password: form.get("db_password"),
-      };
+      const payload = getPayloadFromForm();
 
       try {
         if (editingConnectionId) {

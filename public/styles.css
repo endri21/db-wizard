@@ -335,3 +335,34 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   padding: .35rem .45rem;
 }
 .tree-leaf:hover { background: #eff6ff; border-color: #bfdbfe; }
+
+
+.portal-content-full { min-height: 620px; }
+.resource-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(160deg, #ffffff, #f8fbff);
+  padding: .9rem;
+  display: grid;
+  gap: .7rem;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, .06);
+}
+.resource-card-top h3 { margin: 0 0 .2rem; }
+.resource-card-top .muted { margin: 0; }
+.icon-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+.icon-close:hover { background: #f8fafc; }
+.back-dashboard-btn {
+  width: auto;
+  min-width: 170px;
+  font-weight: 600;
+}

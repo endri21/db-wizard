@@ -12,8 +12,8 @@
         <div class="brand-wrap">
           <div class="brand-badge">DB</div>
           <div>
-            <h1>DB Wizard Portal</h1>
-            <p class="muted">Azure-inspired control plane for your data access</p>
+            <h1>DB Wizard Workspaces</h1>
+            <p class="muted">Manage your database workspaces</p>
           </div>
         </div>
         <div class="header-actions">
@@ -23,47 +23,20 @@
         </div>
       </header>
 
-            <section class="portal-grid">
-        <aside class="panel portal-nav">
-          <h3>Portal Overview</h3>
-          <p class="muted">Track connected engines and workspace capabilities.</p>
-          <div class="stat-grid portal-stat-grid">
-            <div class="stat-card">
-              <div class="label">Total Connections</div>
-              <div id="total-connections" class="value">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="label">Engines Used</div>
-              <div id="engines-used" class="value">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="label">Capabilities</div>
-              <div id="capabilities" class="value">6</div>
-            </div>
-          </div>
-          <ul class="feature-list compact">
-            <li>Connection management by URL or server credentials.</li>
-            <li>Table browsing for each configured database.</li>
-            <li>Read-only SQL execution with safety guard.</li>
-            <li>Save, update, run, and delete reusable queries.</li>
-          </ul>
-        </aside>
-
-        <main class="panel portal-content">
-          <div class="portal-section-header">
-            <h2>Database Resources</h2>
-            <p class="muted">Open any connection to launch a dedicated SQL workspace.</p>
-          </div>
-          <ul id="connection-list" class="resource-grid"></ul>
-        </main>
-      </section>
+      <main class="panel portal-content portal-content-full">
+        <div class="portal-section-header">
+          <h2>Workspace Cards</h2>
+          <p class="muted">Open, edit, test, or delete your saved workspace connections.</p>
+        </div>
+        <ul id="connection-list" class="resource-grid"></ul>
+      </main>
     </div>
 
     <div id="connection-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="connection-modal-title">
       <div class="modal-card panel">
         <div class="modal-header">
           <h2 id="connection-modal-title">Add Database Connection</h2>
-          <button id="close-connection-modal-btn" class="secondary">Close</button>
+          <button id="close-connection-modal-btn" class="icon-close" aria-label="Close">✕</button>
         </div>
 
         <form id="connection-form" class="grid two-col">
@@ -81,8 +54,11 @@
           <label>Port<input name="port" /></label>
           <label>Database<input name="database_name" /></label>
           <label>DB Username<input name="db_username" /></label>
-          <label class="full">DB Password<input type="password" name="db_password" /></label>
-          <button id="connection-submit-btn" class="full" type="submit">Save Connection</button>
+          <label class="full">DB Password<input type="password" name="db_password" placeholder="Leave blank to keep existing password when editing" /></label>
+          <div class="full actions-row">
+            <button id="test-connection-btn" type="button" class="secondary">Test Connection</button>
+            <button id="connection-submit-btn" type="submit">Save Connection</button>
+          </div>
         </form>
       </div>
     </div>

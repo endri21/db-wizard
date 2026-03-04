@@ -170,9 +170,38 @@ app.post("/api/connections", requireAuth, async (req, res) => {
 });
 
 
+app.post("/api/connections/test", requireAuth, async (req, res) => {
+  const { name = "test", engine, connection_string, server, port, database_name, db_username, db_password } = req.body;
+  if (!engine) return res.status(400).json({ error: "Engine is required for connection test." });
+
+  try {
+    const schemas = await listTables({
+      name,
+      engine,
+      connection_string,
+      server,
+      port,
+      database_name,
+      db_username,
+      db_password,
+    });
+    const schemaCount = schemas.length;
+    const tableCount = schemas.reduce((acc, s) => acc + (s.tables?.length || 0), 0);
+    const procCount = schemas.reduce((acc, s) => acc + (s.procedures?.length || 0), 0);
+    return res.json({
+      ok: true,
+      message: `Connection successful. Found ${schemaCount} schema(s), ${tableCount} table(s), ${procCount} procedure(s).`,
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
 app.put("/api/connections/:id", requireAuth, async (req, res) => {
   const existing = await getOwnedConnection(req.params.id, req.user.id);
   if (!existing) return res.status(404).json({ error: "Connection not found." });
+
+  const currentWithSecrets = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
 
   const { name, engine, connection_string, server, port, database_name, db_username, db_password } = req.body;
   if (!name || !engine) return res.status(400).json({ error: "Connection name and engine are required." });
@@ -181,12 +210,12 @@ app.put("/api/connections/:id", requireAuth, async (req, res) => {
     user_id: req.user.id,
     name,
     engine,
-    connection_string,
+    connection_string: connection_string || currentWithSecrets.connection_string,
     server,
     port,
     database_name,
     db_username,
-    db_password,
+    db_password: db_password || currentWithSecrets.db_password,
   });
 
   res.json(updated);
