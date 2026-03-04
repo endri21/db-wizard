@@ -249,30 +249,6 @@ function renderRelationshipDiagram(relationships, selectedTables) {
   }
 
   const selectedSet = new Set(selectedTables.map((t) => t.toLowerCase()));
-  const tableCards = document.createElement("div");
-  tableCards.className = "diagram-table-grid";
-
-  selectedTables.forEach((tableName) => {
-    const card = document.createElement("div");
-    card.className = "diagram-table-card";
-    const title = document.createElement("strong");
-    title.textContent = tableName;
-
-    const relatedCount = relationships.filter((rel) => {
-      const from = `${rel.from_schema}.${rel.from_table}`.toLowerCase();
-      const to = `${rel.to_schema}.${rel.to_table}`.toLowerCase();
-      return from === tableName.toLowerCase() || to === tableName.toLowerCase();
-    }).length;
-
-    const meta = document.createElement("p");
-    meta.className = "muted";
-    meta.textContent = `${relatedCount} relationship(s)`;
-    card.append(title, meta);
-    tableCards.appendChild(card);
-  });
-
-  const relList = document.createElement("div");
-  relList.className = "relation-list";
   const relevant = relationships.filter((rel) => {
     const from = `${rel.from_schema}.${rel.from_table}`.toLowerCase();
     const to = `${rel.to_schema}.${rel.to_table}`.toLowerCase();
@@ -283,18 +259,165 @@ function renderRelationshipDiagram(relationships, selectedTables) {
     const empty = document.createElement("p");
     empty.className = "muted";
     empty.textContent = "No foreign-key relationships found for the selected tables.";
-    relList.appendChild(empty);
-  } else {
-    relevant.forEach((rel) => {
-      const row = document.createElement("div");
-      row.className = "relation-row";
-      row.textContent = `${rel.from_schema}.${rel.from_table}.${rel.from_column}  →  ${rel.to_schema}.${rel.to_table}.${rel.to_column}`;
-      relList.appendChild(row);
-    });
+    canvas.appendChild(empty);
+    count.textContent = `${selectedTables.length} table(s), 0 relation(s)`;
+    return;
   }
 
-  canvas.append(tableCards, relList);
-  count.textContent = `${selectedTables.length} table(s), ${relevant.length} relation(s)`;
+  const tableSet = new Set(selectedTables);
+  relevant.forEach((rel) => {
+    tableSet.add(`${rel.from_schema}.${rel.from_table}`);
+    tableSet.add(`${rel.to_schema}.${rel.to_table}`);
+  });
+  const tableNames = Array.from(tableSet);
+
+  const viewport = document.createElement("div");
+  viewport.className = "diagram-viewport";
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("class", "diagram-svg");
+  viewport.appendChild(svg);
+
+  const nodesLayer = document.createElement("div");
+  nodesLayer.className = "diagram-nodes";
+  viewport.appendChild(nodesLayer);
+
+  const nodeMap = new Map();
+  const positions = new Map();
+  const columns = Math.max(2, Math.ceil(Math.sqrt(tableNames.length)));
+  const horizontalGap = 210;
+  const verticalGap = 120;
+
+  tableNames.forEach((tableName, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+
+    positions.set(tableName, { x: 24 + col * horizontalGap, y: 24 + row * verticalGap });
+
+    const node = document.createElement("div");
+    node.className = "diagram-node";
+    node.dataset.table = tableName;
+    if (selectedSet.has(tableName.toLowerCase())) node.classList.add("selected");
+
+    const title = document.createElement("strong");
+    title.textContent = tableName;
+
+    const subtitle = document.createElement("span");
+    subtitle.className = "muted";
+    subtitle.textContent = selectedSet.has(tableName.toLowerCase()) ? "Selected" : "Related";
+
+    node.append(title, subtitle);
+    nodesLayer.appendChild(node);
+    nodeMap.set(tableName, node);
+  });
+
+  const updateNodePositions = () => {
+    nodeMap.forEach((node, tableName) => {
+      const pos = positions.get(tableName);
+      node.style.left = `${pos.x}px`;
+      node.style.top = `${pos.y}px`;
+    });
+  };
+
+  const edgeMap = new Map();
+  relevant.forEach((rel) => {
+    const fromTable = `${rel.from_schema}.${rel.from_table}`;
+    const toTable = `${rel.to_schema}.${rel.to_table}`;
+
+    const edge = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    edge.setAttribute("class", "diagram-edge");
+    svg.appendChild(edge);
+
+    const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    label.setAttribute("class", "diagram-edge-label");
+    label.textContent = `${rel.from_column} → ${rel.to_column}`;
+    svg.appendChild(label);
+
+    edgeMap.set(`${fromTable}|${toTable}|${rel.from_column}|${rel.to_column}`, { edge, label, fromTable, toTable });
+  });
+
+  const updateEdges = () => {
+    const viewportRect = viewport.getBoundingClientRect();
+
+    edgeMap.forEach(({ edge, label, fromTable, toTable }) => {
+      const fromEl = nodeMap.get(fromTable);
+      const toEl = nodeMap.get(toTable);
+      if (!fromEl || !toEl) return;
+
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect = toEl.getBoundingClientRect();
+
+      const x1 = fromRect.left + fromRect.width / 2 - viewportRect.left + viewport.scrollLeft;
+      const y1 = fromRect.top + fromRect.height / 2 - viewportRect.top + viewport.scrollTop;
+      const x2 = toRect.left + toRect.width / 2 - viewportRect.left + viewport.scrollLeft;
+      const y2 = toRect.top + toRect.height / 2 - viewportRect.top + viewport.scrollTop;
+
+      edge.setAttribute("x1", String(x1));
+      edge.setAttribute("y1", String(y1));
+      edge.setAttribute("x2", String(x2));
+      edge.setAttribute("y2", String(y2));
+
+      label.setAttribute("x", String((x1 + x2) / 2));
+      label.setAttribute("y", String((y1 + y2) / 2 - 5));
+    });
+  };
+
+  const wireDrag = (node, tableName) => {
+    let dragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    node.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      node.setPointerCapture(event.pointerId);
+      const pos = positions.get(tableName);
+      offsetX = event.clientX - pos.x;
+      offsetY = event.clientY - pos.y;
+      node.classList.add("dragging");
+    });
+
+    node.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const nextX = Math.max(8, event.clientX - offsetX);
+      const nextY = Math.max(8, event.clientY - offsetY);
+      positions.set(tableName, { x: nextX, y: nextY });
+      updateNodePositions();
+      updateEdges();
+    });
+
+    const stopDrag = (event) => {
+      if (!dragging) return;
+      dragging = false;
+      node.classList.remove("dragging");
+      try {
+        node.releasePointerCapture(event.pointerId);
+      } catch {
+        // noop
+      }
+    };
+
+    node.addEventListener("pointerup", stopDrag);
+    node.addEventListener("pointercancel", stopDrag);
+  };
+
+  nodeMap.forEach((node, tableName) => wireDrag(node, tableName));
+
+  const maxWidth = Math.max(900, columns * horizontalGap + 250);
+  const maxHeight = Math.max(420, Math.ceil(tableNames.length / columns) * verticalGap + 220);
+  nodesLayer.style.width = `${maxWidth}px`;
+  nodesLayer.style.height = `${maxHeight}px`;
+  svg.setAttribute("viewBox", `0 0 ${maxWidth} ${maxHeight}`);
+  svg.setAttribute("width", String(maxWidth));
+  svg.setAttribute("height", String(maxHeight));
+
+  updateNodePositions();
+  updateEdges();
+
+  viewport.addEventListener("scroll", updateEdges);
+  window.requestAnimationFrame(updateEdges);
+
+  canvas.appendChild(viewport);
+  count.textContent = `${tableNames.length} table(s), ${relevant.length} relation(s) • drag nodes to reorganize`;
 }
 
 async function generateDiagram(connectionId) {
@@ -374,13 +497,20 @@ function renderSchemaTree(connection, schemas = []) {
       showSuccess("Schema structure query filled.");
     });
 
-    const tablesTitle = document.createElement("p");
-    tablesTitle.className = "tree-section-title";
-    tablesTitle.textContent = `Tables (${schemaNode.tables.length})`;
-    schemaBody.appendChild(tablesTitle);
+    const tablesWrap = document.createElement("div");
+    tablesWrap.className = "tree-group";
+    const tablesToggle = document.createElement("button");
+    tablesToggle.className = "tree-toggle tree-sub-toggle";
+    const tablesLabel = createNodeLabel("📁", `Tables (${schemaNode.tables.length})`);
+    tablesToggle.appendChild(tablesLabel.wrap);
 
     const tablesUl = document.createElement("ul");
-    tablesUl.className = "tree-list";
+    tablesUl.className = "tree-list hidden";
+    tablesToggle.addEventListener("click", () => {
+      const hidden = tablesUl.classList.toggle("hidden");
+      tablesLabel.caret.textContent = hidden ? "▸" : "▾";
+    });
+
     schemaNode.tables.forEach((table) => {
       const item = document.createElement("li");
       const btn = document.createElement("button");
@@ -404,15 +534,23 @@ function renderSchemaTree(connection, schemas = []) {
       item.textContent = "No tables";
       tablesUl.appendChild(item);
     }
-    schemaBody.appendChild(tablesUl);
+    tablesWrap.append(tablesToggle, tablesUl);
+    schemaBody.appendChild(tablesWrap);
 
-    const procsTitle = document.createElement("p");
-    procsTitle.className = "tree-section-title";
-    procsTitle.textContent = `Stored Procedures (${schemaNode.procedures.length})`;
-    schemaBody.appendChild(procsTitle);
+    const procsWrap = document.createElement("div");
+    procsWrap.className = "tree-group";
+    const procsToggle = document.createElement("button");
+    procsToggle.className = "tree-toggle tree-sub-toggle";
+    const procsLabel = createNodeLabel("📁", `Stored Procedures (${schemaNode.procedures.length})`);
+    procsToggle.appendChild(procsLabel.wrap);
 
     const procsUl = document.createElement("ul");
-    procsUl.className = "tree-list";
+    procsUl.className = "tree-list hidden";
+    procsToggle.addEventListener("click", () => {
+      const hidden = procsUl.classList.toggle("hidden");
+      procsLabel.caret.textContent = hidden ? "▸" : "▾";
+    });
+
     schemaNode.procedures.forEach((proc) => {
       const item = document.createElement("li");
       const btn = document.createElement("button");
@@ -432,7 +570,8 @@ function renderSchemaTree(connection, schemas = []) {
       item.textContent = "No procedures";
       procsUl.appendChild(item);
     }
-    schemaBody.appendChild(procsUl);
+    procsWrap.append(procsToggle, procsUl);
+    schemaBody.appendChild(procsWrap);
 
     schemaLi.append(schemaToggle, schemaBody);
     dbBody.appendChild(schemaLi);
