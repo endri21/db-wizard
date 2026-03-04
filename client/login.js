@@ -8,7 +8,7 @@
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("registered")) {
-      showError("Registration successful. Please sign in.");
+      showSuccess("Account created successfully. Please sign in.");
     }
 
     const providers = await apiRequest("/api/auth/providers");
@@ -25,7 +25,6 @@
 
     document.getElementById("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!params.get("registered")) showError("");
       const form = new FormData(e.target);
       try {
         await apiRequest("/api/login", {

@@ -8,8 +8,7 @@
 
     document.getElementById("register-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      showError("");
-      const form = new FormData(e.target);
+            const form = new FormData(e.target);
       try {
         await apiRequest("/api/register", {
           method: "POST",

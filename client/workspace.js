@@ -38,6 +38,16 @@ function renderResult(result) {
   });
 }
 
+function normalizeTableRow(row) {
+  if (typeof row === "string") {
+    return { schema: "default", name: row };
+  }
+  return {
+    schema: row.schema || "default",
+    name: row.name || row.table_name || "unknown",
+  };
+}
+
 async function loadTables(connectionId) {
   const data = await apiRequest(`/api/connections/${connectionId}/tables`);
   const list = document.getElementById("table-list");
@@ -51,9 +61,19 @@ async function loadTables(connectionId) {
     return;
   }
 
-  data.tables.forEach((name) => {
+  data.tables.map(normalizeTableRow).forEach((table) => {
     const li = document.createElement("li");
-    li.textContent = name;
+    li.className = "table-item";
+
+    const schemaChip = document.createElement("span");
+    schemaChip.className = "schema-chip";
+    schemaChip.textContent = table.schema;
+
+    const name = document.createElement("span");
+    name.className = "table-name";
+    name.textContent = table.name;
+
+    li.append(schemaChip, name);
     list.appendChild(li);
   });
 }
@@ -98,11 +118,11 @@ async function loadSavedQueries(connectionId) {
     runBtn.textContent = "Run";
     runBtn.addEventListener("click", async () => {
       try {
-        showError("");
         const result = await apiRequest(`/api/connections/${connectionId}/saved-queries/${item.id}/run`, {
           method: "POST",
         });
         renderResult(result);
+        showSuccess("Saved query executed.");
       } catch (err) {
         showError(err.message);
       }
@@ -113,9 +133,9 @@ async function loadSavedQueries(connectionId) {
     delBtn.textContent = "Delete";
     delBtn.addEventListener("click", async () => {
       try {
-        showError("");
         await apiRequest(`/api/connections/${connectionId}/saved-queries/${item.id}`, { method: "DELETE" });
         await loadSavedQueries(connectionId);
+        showSuccess("Saved query deleted.");
       } catch (err) {
         showError(err.message);
       }
@@ -150,18 +170,19 @@ async function loadSavedQueries(connectionId) {
       showError("Connection not found.");
       return;
     }
+
     document.getElementById("connection-chip").textContent = `${current.name} (${current.engine})`;
     document.getElementById("workspace-subtitle").textContent = `SQL Workspace • ${current.name}`;
 
     document.getElementById("run-query-btn").addEventListener("click", async () => {
       try {
-        showError("");
         const query = document.getElementById("query-text").value;
         const result = await apiRequest(`/api/connections/${connectionId}/query`, {
           method: "POST",
           body: JSON.stringify({ query }),
         });
         renderResult(result);
+        showSuccess("Query executed.");
       } catch (err) {
         showError(err.message);
       }
@@ -169,11 +190,11 @@ async function loadSavedQueries(connectionId) {
 
     document.getElementById("save-query-btn").addEventListener("click", async () => {
       try {
-        showError("");
         const name = document.getElementById("query-name").value;
         const sql_text = document.getElementById("query-text").value;
+        const isUpdate = Boolean(editingSavedQueryId);
 
-        if (editingSavedQueryId) {
+        if (isUpdate) {
           await apiRequest(`/api/connections/${connectionId}/saved-queries/${editingSavedQueryId}`, {
             method: "PUT",
             body: JSON.stringify({ name, sql_text }),
@@ -189,6 +210,7 @@ async function loadSavedQueries(connectionId) {
         document.getElementById("save-query-btn").textContent = "Save Query";
         document.getElementById("query-name").value = "";
         await loadSavedQueries(connectionId);
+        showSuccess(isUpdate ? "Saved query updated." : "Saved query created.");
       } catch (err) {
         showError(err.message);
       }

@@ -15,16 +15,38 @@ async function apiRequest(url, options = {}) {
   return payload;
 }
 
-function showError(message) {
-  const errorEl = document.getElementById("error");
-  if (!errorEl) return;
-  if (!message) {
-    errorEl.classList.add("hidden");
-    errorEl.textContent = "";
-    return;
+function ensureToastRoot() {
+  let root = document.getElementById("toast-root");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "toast-root";
+    root.className = "toast-root";
+    document.body.appendChild(root);
   }
-  errorEl.classList.remove("hidden");
-  errorEl.textContent = message;
+  return root;
+}
+
+function showToast(message, type = "error") {
+  if (!message) return;
+  const root = ensureToastRoot();
+  const item = document.createElement("div");
+  item.className = `toast ${type}`;
+  item.textContent = message;
+  root.appendChild(item);
+
+  window.setTimeout(() => item.classList.add("show"), 10);
+  window.setTimeout(() => {
+    item.classList.remove("show");
+    window.setTimeout(() => item.remove(), 250);
+  }, 3600);
+}
+
+function showError(message) {
+  if (message) showToast(message, "error");
+}
+
+function showSuccess(message) {
+  if (message) showToast(message, "success");
 }
 
 async function requireUserOrRedirect() {

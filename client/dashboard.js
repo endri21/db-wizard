@@ -82,8 +82,7 @@ async function loadConnections() {
 
     document.getElementById("connection-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      showError("");
-      const form = new FormData(e.target);
+            const form = new FormData(e.target);
       try {
         await apiRequest("/api/connections", {
           method: "POST",
@@ -100,6 +99,7 @@ async function loadConnections() {
         });
         e.target.reset();
         closeModal();
+        showSuccess("Connection saved.");
         await loadConnections();
       } catch (err) {
         showError(err.message);

@@ -92,20 +92,30 @@ async function listTables(conn) {
     if (engine === "postgresql") {
       const client = new Client(cfg.connectionString ? { connectionString: cfg.connectionString } : cfg);
       await client.connect();
-      const result = await client.query(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name"
-      );
+      const result = await client.query(`
+        SELECT table_schema, table_name
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+          AND table_schema NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY table_schema, table_name
+      `);
       await client.end();
-      return result.rows.map((r) => r.table_name);
+      return result.rows.map((r) => ({ schema: r.table_schema, name: r.table_name }));
     }
 
     if (engine === "mysql") {
       const connection = cfg.connectionString
         ? await mysql.createConnection(cfg.connectionString)
         : await mysql.createConnection(cfg);
-      const [rows] = await connection.query("SHOW TABLES");
+      const [rows] = await connection.query(`
+        SELECT TABLE_SCHEMA, TABLE_NAME
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_TYPE = 'BASE TABLE'
+          AND TABLE_SCHEMA NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
+        ORDER BY TABLE_SCHEMA, TABLE_NAME
+      `);
       await connection.end();
-      return rows.map((row) => Object.values(row)[0]);
+      return rows.map((row) => ({ schema: row.TABLE_SCHEMA, name: row.TABLE_NAME }));
     }
 
     if (engine === "mssql") {
@@ -123,9 +133,14 @@ async function listTables(conn) {
       );
       const result = await pool
         .request()
-        .query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME");
+        .query(`
+          SELECT TABLE_SCHEMA, TABLE_NAME
+          FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_TYPE='BASE TABLE'
+          ORDER BY TABLE_SCHEMA, TABLE_NAME
+        `);
       await pool.close();
-      return result.recordset.map((r) => r.TABLE_NAME);
+      return result.recordset.map((r) => ({ schema: r.TABLE_SCHEMA, name: r.TABLE_NAME }));
     }
 
     throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
