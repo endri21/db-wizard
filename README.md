@@ -146,6 +146,18 @@ Default demo credentials are controlled by:
 - `SEED_DEMO_USERNAME`
 - `SEED_DEMO_PASSWORD`
 
+
+### Target database SSL (for workspace connections)
+
+If your target PostgreSQL server requires TLS (for example error contains `no pg_hba.conf entry ... no encryption`), configure:
+
+```bash
+TARGET_DB_SSLMODE=require
+TARGET_DB_SSL_REJECT_UNAUTHORIZED=false
+```
+
+The app now retries PostgreSQL workspace connections with SSL automatically when it detects that exact `no encryption` failure.
+
 ## OAuth Setup
 
 Configure any provider in `.env`:

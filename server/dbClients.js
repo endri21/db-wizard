@@ -72,7 +72,6 @@ function extractHostFromConnectionString(connectionString) {
   }
 }
 
-
 function groupObjectsBySchema(rows) {
   const grouped = new Map();
   rows.forEach((row) => {
@@ -106,15 +105,80 @@ function formatSchemaTree(tableRows, procedureRows) {
     .sort((a, b) => a.schema.localeCompare(b.schema));
 }
 
+function resolveTargetPgSslConfig(forceEnable = false) {
+  const sslMode = String(process.env.TARGET_DB_SSLMODE || "").toLowerCase();
+  const enabledByEnv = ["require", "verify-ca", "verify-full", "true", "1"].includes(sslMode);
+  const enabled = forceEnable || enabledByEnv;
+  if (!enabled) return undefined;
+
+  const rejectUnauthorized =
+    String(process.env.TARGET_DB_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true";
+  return { rejectUnauthorized };
+}
+
+function shouldRetryPgWithSsl(err) {
+  const message = String(err?.message || "").toLowerCase();
+  return message.includes("no pg_hba.conf entry") && message.includes("no encryption");
+}
+
+function buildPgClientConfig(cfg, forceSsl = false) {
+  const ssl = resolveTargetPgSslConfig(forceSsl);
+  const base = cfg.connectionString ? { connectionString: cfg.connectionString } : { ...cfg };
+  if (ssl) base.ssl = ssl;
+  return base;
+}
+
+async function withPgClient(cfg, runner, { retryOnNoEncryption = true } = {}) {
+  const firstConfig = buildPgClientConfig(cfg, false);
+  const firstClient = new Client(firstConfig);
+
+  try {
+    await firstClient.connect();
+    const out = await runner(firstClient);
+    await firstClient.end();
+    return out;
+  } catch (err) {
+    try {
+      await firstClient.end();
+    } catch {
+      // ignore close errors
+    }
+
+    if (retryOnNoEncryption && shouldRetryPgWithSsl(err)) {
+      const retryClient = new Client(buildPgClientConfig(cfg, true));
+      try {
+        await retryClient.connect();
+        const out = await runner(retryClient);
+        await retryClient.end();
+        return out;
+      } catch (retryErr) {
+        try {
+          await retryClient.end();
+        } catch {
+          // ignore close errors
+        }
+        throw retryErr;
+      }
+    }
+
+    throw err;
+  }
+}
+
 function rethrowFriendlyConnectionError(err, cfg) {
   if (err?.code === "ENOTFOUND") {
-    const host = cfg?.connectionString
-      ? extractHostFromConnectionString(cfg.connectionString)
-      : cfg?.host;
+    const host = cfg?.connectionString ? extractHostFromConnectionString(cfg.connectionString) : cfg?.host;
     throw new Error(
       `Could not resolve database host${host ? ` (${host})` : ""}. Check your connection string/server host and DNS settings.`
     );
   }
+
+  if (shouldRetryPgWithSsl(err)) {
+    throw new Error(
+      "The PostgreSQL server requires SSL/TLS encryption. Set TARGET_DB_SSLMODE=require (and optionally TARGET_DB_SSL_REJECT_UNAUTHORIZED=false) then retry."
+    );
+  }
+
   throw err;
 }
 
@@ -124,24 +188,27 @@ async function listTables(conn) {
 
   try {
     if (engine === "postgresql") {
-      const client = new Client(cfg.connectionString ? { connectionString: cfg.connectionString } : cfg);
-      await client.connect();
-      const tableResult = await client.query(`
-        SELECT table_schema AS schema, table_name AS name
-        FROM information_schema.tables
-        WHERE table_type = 'BASE TABLE'
-          AND table_schema NOT IN ('pg_catalog', 'information_schema')
-        ORDER BY table_schema, table_name
-      `);
-      const procedureResult = await client.query(`
-        SELECT routine_schema AS schema, routine_name AS name
-        FROM information_schema.routines
-        WHERE routine_type = 'PROCEDURE'
-          AND routine_schema NOT IN ('pg_catalog', 'information_schema')
-        ORDER BY routine_schema, routine_name
-      `);
-      await client.end();
-      return formatSchemaTree(tableResult.rows, procedureResult.rows);
+      return withPgClient(
+        cfg,
+        async (client) => {
+          const tableResult = await client.query(`
+            SELECT table_schema AS schema, table_name AS name
+            FROM information_schema.tables
+            WHERE table_type = 'BASE TABLE'
+              AND table_schema NOT IN ('pg_catalog', 'information_schema')
+            ORDER BY table_schema, table_name
+          `);
+          const procedureResult = await client.query(`
+            SELECT routine_schema AS schema, routine_name AS name
+            FROM information_schema.routines
+            WHERE routine_type = 'PROCEDURE'
+              AND routine_schema NOT IN ('pg_catalog', 'information_schema')
+            ORDER BY routine_schema, routine_name
+          `);
+          return formatSchemaTree(tableResult.rows, procedureResult.rows);
+        },
+        { retryOnNoEncryption: true }
+      );
     }
 
     if (engine === "mysql") {
@@ -205,7 +272,6 @@ async function listTables(conn) {
   }
 }
 
-
 async function runQuery(conn, query) {
   ensureReadOnlyQuery(query);
   const engine = normalizeEngine(conn.engine);
@@ -213,11 +279,14 @@ async function runQuery(conn, query) {
 
   try {
     if (engine === "postgresql") {
-      const client = new Client(cfg.connectionString ? { connectionString: cfg.connectionString } : cfg);
-      await client.connect();
-      const result = await client.query(query);
-      await client.end();
-      return { columns: result.fields.map((f) => f.name), rows: result.rows.slice(0, 200) };
+      return withPgClient(
+        cfg,
+        async (client) => {
+          const result = await client.query(query);
+          return { columns: result.fields.map((f) => f.name), rows: result.rows.slice(0, 200) };
+        },
+        { retryOnNoEncryption: true }
+      );
     }
 
     if (engine === "mysql") {
@@ -259,4 +328,10 @@ async function runQuery(conn, query) {
   }
 }
 
-module.exports = { listTables, runQuery };
+module.exports = {
+  listTables,
+  runQuery,
+  // exported for tests
+  shouldRetryPgWithSsl,
+  resolveTargetPgSslConfig,
+};
