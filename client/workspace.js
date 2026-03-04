@@ -147,15 +147,33 @@ function showTableContextMenu({ x, y, schema, table }) {
   activeContextMenu = menu;
 }
 
-function renderSchemaTree(schemas = []) {
+function renderSchemaTree(connection, schemas = []) {
   const tree = document.getElementById("schema-tree");
   tree.innerHTML = "";
+
+  const dbRoot = document.createElement("li");
+  dbRoot.className = "db-root-node";
+
+  const dbToggle = document.createElement("button");
+  dbToggle.className = "tree-toggle db-root-toggle";
+  dbToggle.textContent = `▾ ${connection.name} (${connection.engine})`;
+
+  const dbBody = document.createElement("div");
+  dbBody.className = "db-root-body";
+
+  dbToggle.addEventListener("click", () => {
+    const hidden = dbBody.classList.toggle("hidden");
+    dbToggle.textContent = `${hidden ? "▸" : "▾"} ${connection.name} (${connection.engine})`;
+  });
+
+  tree.append(dbRoot);
+  dbRoot.append(dbToggle, dbBody);
 
   if (!schemas.length) {
     const li = document.createElement("li");
     li.className = "muted";
     li.textContent = "No schemas/tables/procedures found.";
-    tree.appendChild(li);
+    dbBody.appendChild(li);
     return;
   }
 
@@ -173,6 +191,9 @@ function renderSchemaTree(schemas = []) {
     schemaToggle.addEventListener("click", () => {
       const hidden = schemaBody.classList.toggle("hidden");
       schemaToggle.textContent = `${hidden ? "▸" : "▾"} ${schemaNode.schema}`;
+      if (!hidden) {
+        schemaLi.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
 
       const sql = schemaStructureTemplate(currentEngine, schemaNode.schema);
       setEditorQuery(sql, `${schemaNode.schema}.schema`);
@@ -240,13 +261,13 @@ function renderSchemaTree(schemas = []) {
     schemaBody.appendChild(procsUl);
 
     schemaLi.append(schemaToggle, schemaBody);
-    tree.appendChild(schemaLi);
+    dbBody.appendChild(schemaLi);
   });
 }
 
-async function loadSchemas(connectionId) {
-  const data = await apiRequest(`/api/connections/${connectionId}/tables`);
-  renderSchemaTree(data.schemas || []);
+async function loadSchemas(connection) {
+  const data = await apiRequest(`/api/connections/${connection.id}/tables`);
+  renderSchemaTree(connection, data.schemas || []);
 }
 
 async function loadSavedQueries(connectionId) {
@@ -398,7 +419,7 @@ async function loadSavedQueries(connectionId) {
       }
     });
 
-    await Promise.all([loadSchemas(connectionId), loadSavedQueries(connectionId)]);
+    await Promise.all([loadSchemas(current), loadSavedQueries(connectionId)]);
   } catch (err) {
     showError(err.message);
   }
