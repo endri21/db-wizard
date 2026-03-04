@@ -48,8 +48,8 @@ function requireAuth(req, res, next) {
   return next();
 }
 
-async function getOwnedConnection(connectionId, userId) {
-  return store.findConnectionByIdAndUser(connectionId, userId);
+async function getOwnedConnection(connectionId, userId, options = {}) {
+  return store.findConnectionByIdAndUser(connectionId, userId, options);
 }
 
 async function getOwnedSavedQuery(savedQueryId, connectionId, userId) {
@@ -58,6 +58,10 @@ async function getOwnedSavedQuery(savedQueryId, connectionId, userId) {
 
 app.get("/", (_req, res) => {
   res.sendFile(path.join(__dirname, "..", "client", "login.html"));
+});
+
+app.get("/register", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "client", "register.html"));
 });
 
 function requireAuthPage(req, res, next) {
@@ -166,7 +170,7 @@ app.post("/api/connections", requireAuth, async (req, res) => {
 });
 
 app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
-  const conn = await getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
@@ -178,7 +182,7 @@ app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
 });
 
 app.post("/api/connections/:id/query", requireAuth, async (req, res) => {
-  const conn = await getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
@@ -190,14 +194,14 @@ app.post("/api/connections/:id/query", requireAuth, async (req, res) => {
 });
 
 app.get("/api/connections/:id/saved-queries", requireAuth, async (req, res) => {
-  const conn = await getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   res.json(await store.listSavedQueries(req.user.id, req.params.id));
 });
 
 app.post("/api/connections/:id/saved-queries", requireAuth, async (req, res) => {
-  const conn = await getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   const { name, sql_text } = req.body;
@@ -219,7 +223,7 @@ app.post("/api/connections/:id/saved-queries", requireAuth, async (req, res) => 
 });
 
 app.put("/api/connections/:id/saved-queries/:queryId", requireAuth, async (req, res) => {
-  const conn = await getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   const existing = await getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
@@ -251,7 +255,7 @@ app.delete("/api/connections/:id/saved-queries/:queryId", requireAuth, async (re
 });
 
 app.post("/api/connections/:id/saved-queries/:queryId/run", requireAuth, async (req, res) => {
-  const conn = await getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   const saved = await getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);

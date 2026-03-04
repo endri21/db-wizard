@@ -10,6 +10,7 @@ A multi-database access tool implemented with **Node.js (Express)** and a modern
 - Management dashboard to add connections using:
   - full connection string, or
   - server + port + db + username + password.
+- Connection secrets are encrypted at rest (AES-256-GCM) before saving to PostgreSQL.
 - Explore selected database tables in the left sidebar.
 - Run simple read-only queries and view results.
 - Advanced SQL IDE basics:
@@ -31,6 +32,19 @@ APP_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/db_wizard
 ```
 
 On startup, the server auto-creates required tables if they do not exist.
+
+
+## Connection secret encryption
+
+Database connection secrets (`connection_string`, `db_password`) are encrypted before writing to app metadata storage.
+
+Configure in `.env`:
+
+```bash
+APP_ENCRYPTION_KEY=your-long-random-secret
+```
+
+If omitted, the app falls back to `SESSION_SECRET` (or a local dev fallback), but setting a dedicated strong key is recommended for production.
 
 ## Tech Stack
 

@@ -3,53 +3,51 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DB Wizard | Login</title>
+    <title>DB Wizard | Sign In</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="auth-shell">
-      <div class="auth-card">
-        <div class="auth-topbar">
-          <div class="brand-wrap">
-            <div class="brand-badge">DB</div>
-            <div>
-              <h1>DB Wizard</h1>
-              <p class="muted">Modern database access for teams</p>
-            </div>
+    <div class="auth-shell auth-shell-split">
+      <section class="auth-brand-panel panel">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>DB Wizard</h1>
+            <p class="muted">Database Portal for modern teams</p>
           </div>
-          <span class="chip">Secure Workspace</span>
         </div>
+        <h2>Operate your databases from one control plane</h2>
+        <ul class="feature-list">
+          <li>Manage PostgreSQL, MySQL, and MSSQL connections.</li>
+          <li>Run read-only SQL in a dedicated secure workspace.</li>
+          <li>Save and reuse team queries with versioned clarity.</li>
+        </ul>
+      </section>
+
+      <section class="auth-form-panel panel">
+        <h2>Sign in to your workspace</h2>
+        <p class="muted">Use your local account or organization SSO.</p>
 
         <p id="error" class="error hidden"></p>
 
-        <div class="auth-grid">
-          <section class="panel">
-            <h2>Sign in</h2>
-            <p class="muted">Access your connections and SQL workspace.</p>
-            <form id="login-form">
-              <label>Username<input name="username" required /></label>
-              <label>Password<input type="password" name="password" required /></label>
-              <button type="submit">Login</button>
-            </form>
-          </section>
+        <form id="login-form">
+          <label>Username<input name="username" required /></label>
+          <label>Password<input type="password" name="password" required /></label>
+          <button type="submit">Sign In</button>
+        </form>
 
-          <section class="panel">
-            <h2>Create account</h2>
-            <p class="muted">Create a local account in seconds.</p>
-            <form id="register-form">
-              <label>Username<input name="username" required /></label>
-              <label>Password<input type="password" name="password" required /></label>
-              <button type="submit" class="secondary">Register</button>
-            </form>
-          </section>
+        <div class="auth-links">
+          <span class="muted">New here?</span>
+          <a href="/register">Create account</a>
         </div>
 
-        <section class="panel">
-          <h2>Organization Login</h2>
-          <p class="muted">Use Google, GitHub, or Azure AD when configured.</p>
+        <hr />
+
+        <div>
+          <h3>Organization Login</h3>
           <div id="oauth-buttons" class="oauth-buttons"></div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
 
     <script src="/client/shared.js"></script>

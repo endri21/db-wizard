@@ -7,40 +7,67 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <header class="app-header">
+    <div class="app-shell portal-shell">
+      <header class="app-header portal-header">
         <div class="brand-wrap">
           <div class="brand-badge">DB</div>
           <div>
-            <h1>Connection Dashboard</h1>
-            <p class="muted">Manage data sources and launch SQL workspaces</p>
+            <h1>DB Wizard Portal</h1>
+            <p class="muted">Azure-inspired control plane for your data access</p>
           </div>
         </div>
         <div class="header-actions">
+          <button id="open-connection-modal-btn">+ Add Connection</button>
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
       </header>
 
-      <section class="stat-grid">
-        <div class="stat-card">
-          <div class="label">Supported Engines</div>
-          <div class="value">3</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Read-only Guard</div>
-          <div class="value">Enabled</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Workspace Mode</div>
-          <div class="value">Enterprise</div>
-        </div>
-      </section>
-
       <p id="error" class="error hidden"></p>
 
-      <section class="panel connection-panel">
-        <h2>Add Connection</h2>
+      <section class="portal-grid">
+        <aside class="panel portal-nav">
+          <h3>Portal Overview</h3>
+          <p class="muted">Track connected engines and workspace capabilities.</p>
+          <div class="stat-grid portal-stat-grid">
+            <div class="stat-card">
+              <div class="label">Total Connections</div>
+              <div id="total-connections" class="value">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Engines Used</div>
+              <div id="engines-used" class="value">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="label">Capabilities</div>
+              <div id="capabilities" class="value">6</div>
+            </div>
+          </div>
+          <ul class="feature-list compact">
+            <li>Connection management by URL or server credentials.</li>
+            <li>Table browsing for each configured database.</li>
+            <li>Read-only SQL execution with safety guard.</li>
+            <li>Save, update, run, and delete reusable queries.</li>
+          </ul>
+        </aside>
+
+        <main class="panel portal-content">
+          <div class="portal-section-header">
+            <h2>Database Resources</h2>
+            <p class="muted">Open any connection to launch a dedicated SQL workspace.</p>
+          </div>
+          <ul id="connection-list" class="resource-grid"></ul>
+        </main>
+      </section>
+    </div>
+
+    <div id="connection-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="connection-modal-title">
+      <div class="modal-card panel">
+        <div class="modal-header">
+          <h2 id="connection-modal-title">Add Database Connection</h2>
+          <button id="close-connection-modal-btn" class="secondary">Close</button>
+        </div>
+
         <form id="connection-form" class="grid two-col">
           <label>Connection Name<input name="name" required /></label>
           <label>Engine
@@ -51,7 +78,7 @@
             </select>
           </label>
           <label class="full">Connection String<input name="connection_string" placeholder="postgresql://user:pass@host:5432/db" /></label>
-          <p class="full muted">Or provide individual server credentials.</p>
+          <p class="full muted">Or use server fields below.</p>
           <label>Server<input name="server" /></label>
           <label>Port<input name="port" /></label>
           <label>Database<input name="database_name" /></label>
@@ -59,12 +86,7 @@
           <label class="full">DB Password<input type="password" name="db_password" /></label>
           <button class="full" type="submit">Save Connection</button>
         </form>
-      </section>
-
-      <section class="panel">
-        <h2>Your Connections</h2>
-        <ul id="connection-list" class="nav-list"></ul>
-      </section>
+      </div>
     </div>
 
     <script src="/client/shared.js"></script>
