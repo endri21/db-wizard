@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Sign In</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="auth-shell auth-shell-split">
+      <section class="auth-brand-panel panel auth-hero">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>DB Wizard Cloud Portal</h1>
+            <p class="muted">Enterprise data operations cockpit</p>
+          </div>
+        </div>
+        <h2>Manage databases like Azure / AWS control planes</h2>
+        <p class="muted">Unified access, secure query execution, and reusable SQL workflows across environments.</p>
+        <ul class="feature-list">
+          <li>Connection catalog with PostgreSQL, MySQL, MSSQL support.</li>
+          <li>Schema-aware table explorer and read-only SQL workspace.</li>
+          <li>Encrypted secrets and organization SSO integrations.</li>
+        </ul>
+        <div class="hero-pills">
+          <span class="chip">Portal UX</span>
+          <span class="chip">Read-only Guard</span>
+          <span class="chip">Encrypted Secrets</span>
+        </div>
+      </section>
+
+      <section class="auth-form-panel panel auth-signin-card">
+        <h2>Sign in</h2>
+        <p class="muted">Continue to your workspace</p>
+
+        <form id="login-form">
+          <label>Username<input name="username" required /></label>
+          <label>Password<input type="password" name="password" required /></label>
+          <button type="submit">Sign In</button>
+        </form>
+
+        <div class="auth-links">
+          <span class="muted">New here?</span>
+          <a href="/register">Create account</a>
+        </div>
+
+        <hr />
+
+        <div>
+          <h3>Organization SSO</h3>
+          <div id="oauth-buttons" class="oauth-buttons"></div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/login.js"></script>
+  </body>
+</html>
