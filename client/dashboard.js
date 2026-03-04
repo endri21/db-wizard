@@ -50,6 +50,26 @@ function getPayloadFromForm() {
   };
 }
 
+function statusCell(status) {
+  const wrap = document.createElement("div");
+  wrap.className = "status-wrap";
+  const dot = document.createElement("span");
+  dot.className = `status-dot ${status.connected ? "ok" : "bad"}`;
+  const txt = document.createElement("span");
+  txt.textContent = status.connected ? "Connected" : "Disconnected";
+  wrap.append(dot, txt);
+  return wrap;
+}
+
+async function fetchConnectionStatus(connectionId) {
+  try {
+    const res = await apiRequest(`/api/connections/${connectionId}/status`);
+    return { connected: Boolean(res.connected) };
+  } catch {
+    return { connected: false };
+  }
+}
+
 async function loadConnections() {
   const connections = await apiRequest("/api/connections");
   const list = document.getElementById("connection-list");
@@ -57,38 +77,38 @@ async function loadConnections() {
   setDashboardStats(connections);
 
   if (!connections.length) {
-    const li = document.createElement("li");
-    li.className = "panel muted";
-    li.textContent = "No workspaces yet. Click '+ Add Connection' to create one.";
-    list.appendChild(li);
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 5;
+    td.className = "muted";
+    td.textContent = "No workspaces yet. Click '+ Add Connection' to create one.";
+    tr.appendChild(td);
+    list.appendChild(tr);
     return;
   }
 
-  connections.forEach((conn) => {
-    const li = document.createElement("li");
-    li.className = "resource-card";
+  const statuses = await Promise.all(connections.map((c) => fetchConnectionStatus(c.id)));
 
-    const top = document.createElement("div");
-    top.className = "resource-card-top";
+  connections.forEach((conn, idx) => {
+    const tr = document.createElement("tr");
 
-    const titleWrap = document.createElement("div");
-    const title = document.createElement("h3");
-    title.textContent = conn.name;
-    const subtitle = document.createElement("p");
-    subtitle.className = "muted";
-    subtitle.textContent = conn.database_name || conn.server || "Connection configured";
-    titleWrap.append(title, subtitle);
+    const nameTd = document.createElement("td");
+    nameTd.innerHTML = `<strong>${conn.name}</strong>`;
 
+    const engineTd = document.createElement("td");
     const chip = document.createElement("span");
     chip.className = "chip";
     chip.textContent = conn.engine.toUpperCase();
+    engineTd.appendChild(chip);
 
-    top.append(titleWrap, chip);
+    const hostTd = document.createElement("td");
+    hostTd.className = "muted";
+    hostTd.textContent = `${conn.server || "from connection string"} / ${conn.database_name || "-"}`;
 
-    const meta = document.createElement("p");
-    meta.className = "muted";
-    meta.textContent = `Host: ${conn.server || "from connection string"} • Port: ${conn.port || "default"}`;
+    const statusTd = document.createElement("td");
+    statusTd.appendChild(statusCell(statuses[idx]));
 
+    const actionsTd = document.createElement("td");
     const actions = document.createElement("div");
     actions.className = "actions-row";
 
@@ -119,8 +139,10 @@ async function loadConnections() {
     });
 
     actions.append(openBtn, editBtn, deleteBtn);
-    li.append(top, meta, actions);
-    list.appendChild(li);
+    actionsTd.appendChild(actions);
+
+    tr.append(nameTd, engineTd, hostTd, statusTd, actionsTd);
+    list.appendChild(tr);
   });
 }
 

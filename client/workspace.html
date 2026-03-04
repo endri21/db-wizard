@@ -17,13 +17,18 @@
           </div>
         </div>
         <div class="header-actions">
-          <a href="/dashboard" class="button secondary back-dashboard-btn">← Back to Dashboard</a>
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
       </header>
 
-            <section class="workspace-enterprise">
+      <section class="workspace-path panel">
+        <a href="/dashboard" class="path-back">/home</a>
+        <span class="path-sep">/</span>
+        <span class="path-current">ide</span>
+      </section>
+
+      <section class="workspace-enterprise">
         <aside class="panel left-rail">
           <h3>Schemas & Tables</h3>
           <ul id="schema-tree" class="schema-tree"></ul>

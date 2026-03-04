@@ -17,18 +17,34 @@
           </div>
         </div>
         <div class="header-actions">
-          <button id="open-connection-modal-btn">+ Add Connection</button>
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
       </header>
 
       <main class="panel portal-content portal-content-full">
-        <div class="portal-section-header">
-          <h2>Workspace Cards</h2>
-          <p class="muted">Open, edit, test, or delete your saved workspace connections.</p>
+        <div class="portal-section-header section-actions">
+          <div>
+            <h2>Workspace Connections</h2>
+            <p class="muted">Table view with status, actions, and quick navigation.</p>
+          </div>
+          <button id="open-connection-modal-btn">+ Add Connection</button>
         </div>
-        <ul id="connection-list" class="resource-grid"></ul>
+
+        <div class="table-scroll">
+          <table id="workspace-table" class="workspace-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Engine</th>
+                <th>Host / DB</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="connection-list"></tbody>
+          </table>
+        </div>
       </main>
     </div>
 

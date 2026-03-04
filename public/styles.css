@@ -366,3 +366,29 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   min-width: 170px;
   font-weight: 600;
 }
+
+
+.section-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .8rem;
+}
+
+.workspace-table td, .workspace-table th { vertical-align: middle; }
+.status-wrap { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; }
+.status-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
+.status-dot.ok { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
+.status-dot.bad { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+
+.workspace-path {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  margin-bottom: .9rem;
+  padding: .55rem .8rem;
+}
+.path-back { color: #2563eb; text-decoration: none; font-weight: 600; }
+.path-back:hover { text-decoration: underline; }
+.path-sep { color: #94a3b8; }
+.path-current { color: #475569; font-weight: 600; }

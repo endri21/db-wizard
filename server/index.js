@@ -227,6 +227,18 @@ app.delete("/api/connections/:id", requireAuth, async (req, res) => {
   res.json({ message: "Connection deleted." });
 });
 
+app.get("/api/connections/:id/status", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  try {
+    await listTables(conn);
+    return res.json({ connected: true });
+  } catch (err) {
+    return res.json({ connected: false, error: err.message });
+  }
+});
+
 app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
   const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
