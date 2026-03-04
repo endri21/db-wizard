@@ -5,9 +5,9 @@ const AzureStrategy = require("passport-azure-ad-oauth2");
 
 function configurePassport({ upsertOAuthUser, findUserById }) {
   passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser((id, done) => {
+  passport.deserializeUser(async (id, done) => {
     try {
-      const user = findUserById(id);
+      const user = await findUserById(id);
       done(null, user || false);
     } catch (err) {
       done(err);
@@ -25,7 +25,7 @@ function configurePassport({ upsertOAuthUser, findUserById }) {
         async (_, __, profile, done) => {
           try {
             const email = profile.emails?.[0]?.value || `google:${profile.id}`;
-            const user = upsertOAuthUser("google", profile.id, email);
+            const user = await upsertOAuthUser("google", profile.id, email);
             done(null, user);
           } catch (err) {
             done(err);
@@ -46,7 +46,7 @@ function configurePassport({ upsertOAuthUser, findUserById }) {
         async (_, __, profile, done) => {
           try {
             const username = profile.username || `github:${profile.id}`;
-            const user = upsertOAuthUser("github", profile.id, `github:${username}`);
+            const user = await upsertOAuthUser("github", profile.id, `github:${username}`);
             done(null, user);
           } catch (err) {
             done(err);
@@ -71,7 +71,7 @@ function configurePassport({ upsertOAuthUser, findUserById }) {
           try {
             const oid = params?.id_token || `azure-${Date.now()}`;
             const username = `azure:${oid.slice(0, 16)}`;
-            const user = upsertOAuthUser("azure", oid, username);
+            const user = await upsertOAuthUser("azure", oid, username);
             done(null, user);
           } catch (err) {
             done(err);

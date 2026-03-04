@@ -19,21 +19,23 @@ A multi-database access tool implemented with **Node.js (Express)** and **React*
   - delete saved query,
   - run saved query directly.
 
+## What database stores app users and metadata?
+
+The app now stores users, sessions metadata, saved connections, and saved queries in **PostgreSQL**.
+
+Set `APP_DATABASE_URL` in `.env`:
+
+```bash
+APP_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/db_wizard
+```
+
+On startup, the server auto-creates required tables if they do not exist.
+
 ## Tech Stack
 
-- Backend: Node.js + Express + Passport + file-backed JSON data store.
+- Backend: Node.js + Express + Passport + PostgreSQL (`pg`) for app persistence.
 - Frontend: React (CDN) single-page UI.
-- Database clients: PostgreSQL (`pg`), MySQL (`mysql2`), SQL Server (`mssql`).
-
-## Why install is more stable on Windows now
-
-## Merge conflict note
-
-If GitHub shows conflicts, this branch now contains a reconciled baseline for these files: `.gitignore`, `README.md`, `client/app.jsx`, `package.json`, `public/styles.css`, `server/dbClients.js`, `server/index.js`, and `server/store.js`.
-
-- Removed native local persistence dependencies (`better-sqlite3` and `connect-sqlite3`) from app storage/session layer.
-- Local app data now persists in `data/app-data.json`.
-- This avoids node-gyp Python/toolchain failures for app bootstrapping.
+- Target query engines: PostgreSQL (`pg`), MySQL (`mysql2`), SQL Server (`mssql`).
 
 ## Run
 
@@ -44,6 +46,32 @@ npm start
 ```
 
 Open `http://localhost:3000`.
+
+
+## Database initialization and seed
+
+1. Create a PostgreSQL database (example):
+
+```bash
+createdb db_wizard
+```
+
+2. Initialize tables:
+
+```bash
+npm run db:init
+```
+
+3. Seed demo data (user + sample connection + sample saved query):
+
+```bash
+npm run db:seed
+```
+
+Default demo credentials are controlled by:
+
+- `SEED_DEMO_USERNAME`
+- `SEED_DEMO_PASSWORD`
 
 ## OAuth Setup
 

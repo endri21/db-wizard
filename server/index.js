@@ -18,8 +18,8 @@ const findUserById = (id) => store.findUserById(id);
 const findUserByUsername = (username) => store.findUserByUsername(username);
 const findUserByProvider = (provider, providerId) => store.findUserByProvider(provider, providerId);
 
-const upsertOAuthUser = (provider, providerId, username) => {
-  const existing = findUserByProvider(provider, providerId);
+const upsertOAuthUser = async (provider, providerId, username) => {
+  const existing = await findUserByProvider(provider, providerId);
   if (existing) return existing;
   return store.createUser({ username, provider, provider_id: providerId });
 };
@@ -48,11 +48,11 @@ function requireAuth(req, res, next) {
   return next();
 }
 
-function getOwnedConnection(connectionId, userId) {
+async function getOwnedConnection(connectionId, userId) {
   return store.findConnectionByIdAndUser(connectionId, userId);
 }
 
-function getOwnedSavedQuery(savedQueryId, connectionId, userId) {
+async function getOwnedSavedQuery(savedQueryId, connectionId, userId) {
   return store.findSavedQuery(savedQueryId, connectionId, userId);
 }
 
@@ -74,18 +74,18 @@ app.post("/api/register", async (req, res) => {
     return res.status(400).json({ error: "Username and password are required." });
   }
 
-  if (findUserByUsername(username)) {
+  if (await findUserByUsername(username)) {
     return res.status(400).json({ error: "Username already exists." });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  store.createUser({ username, password_hash: passwordHash, provider: "local" });
+  await store.createUser({ username, password_hash: passwordHash, provider: "local" });
   return res.json({ message: "Registration successful." });
 });
 
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
-  const user = findUserByUsername(username);
+  const user = await findUserByUsername(username);
   if (!user || !user.password_hash) {
     return res.status(401).json({ error: "Invalid credentials." });
   }
@@ -128,15 +128,15 @@ strategies.forEach((provider) => {
   });
 });
 
-app.get("/api/connections", requireAuth, (req, res) => {
-  res.json(store.listConnectionsByUserId(req.user.id));
+app.get("/api/connections", requireAuth, async (req, res) => {
+  res.json(await store.listConnectionsByUserId(req.user.id));
 });
 
-app.post("/api/connections", requireAuth, (req, res) => {
+app.post("/api/connections", requireAuth, async (req, res) => {
   const { name, engine, connection_string, server, port, database_name, db_username, db_password } = req.body;
   if (!name || !engine) return res.status(400).json({ error: "Connection name and engine are required." });
 
-  const conn = store.createConnection({
+  const conn = await store.createConnection({
     user_id: req.user.id,
     name,
     engine,
@@ -151,7 +151,7 @@ app.post("/api/connections", requireAuth, (req, res) => {
 });
 
 app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
-  const conn = getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
@@ -163,7 +163,7 @@ app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
 });
 
 app.post("/api/connections/:id/query", requireAuth, async (req, res) => {
-  const conn = getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
@@ -174,15 +174,15 @@ app.post("/api/connections/:id/query", requireAuth, async (req, res) => {
   }
 });
 
-app.get("/api/connections/:id/saved-queries", requireAuth, (req, res) => {
-  const conn = getOwnedConnection(req.params.id, req.user.id);
+app.get("/api/connections/:id/saved-queries", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
-  res.json(store.listSavedQueries(req.user.id, req.params.id));
+  res.json(await store.listSavedQueries(req.user.id, req.params.id));
 });
 
-app.post("/api/connections/:id/saved-queries", requireAuth, (req, res) => {
-  const conn = getOwnedConnection(req.params.id, req.user.id);
+app.post("/api/connections/:id/saved-queries", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   const { name, sql_text } = req.body;
@@ -194,7 +194,7 @@ app.post("/api/connections/:id/saved-queries", requireAuth, (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 
-  const saved = store.createSavedQuery({
+  const saved = await store.createSavedQuery({
     user_id: req.user.id,
     connection_id: req.params.id,
     name: name.trim(),
@@ -203,11 +203,11 @@ app.post("/api/connections/:id/saved-queries", requireAuth, (req, res) => {
   res.json(saved);
 });
 
-app.put("/api/connections/:id/saved-queries/:queryId", requireAuth, (req, res) => {
-  const conn = getOwnedConnection(req.params.id, req.user.id);
+app.put("/api/connections/:id/saved-queries/:queryId", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
-  const existing = getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
+  const existing = await getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
   if (!existing) return res.status(404).json({ error: "Saved query not found." });
 
   const { name, sql_text } = req.body;
@@ -219,7 +219,7 @@ app.put("/api/connections/:id/saved-queries/:queryId", requireAuth, (req, res) =
     return res.status(400).json({ error: err.message });
   }
 
-  const saved = store.updateSavedQuery(req.params.queryId, {
+  const saved = await store.updateSavedQuery(req.params.queryId, {
     name: name.trim(),
     sql_text: sql_text.trim(),
   });
@@ -227,19 +227,19 @@ app.put("/api/connections/:id/saved-queries/:queryId", requireAuth, (req, res) =
   res.json(saved);
 });
 
-app.delete("/api/connections/:id/saved-queries/:queryId", requireAuth, (req, res) => {
-  const existing = getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
+app.delete("/api/connections/:id/saved-queries/:queryId", requireAuth, async (req, res) => {
+  const existing = await getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
   if (!existing) return res.status(404).json({ error: "Saved query not found." });
 
-  store.deleteSavedQuery(req.params.queryId);
+  await store.deleteSavedQuery(req.params.queryId);
   res.json({ message: "Saved query deleted." });
 });
 
 app.post("/api/connections/:id/saved-queries/:queryId/run", requireAuth, async (req, res) => {
-  const conn = getOwnedConnection(req.params.id, req.user.id);
+  const conn = await getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
-  const saved = getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
+  const saved = await getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
   if (!saved) return res.status(404).json({ error: "Saved query not found." });
 
   try {
@@ -250,6 +250,14 @@ app.post("/api/connections/:id/saved-queries/:queryId/run", requireAuth, async (
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`DB Wizard running on http://localhost:${PORT}`);
+async function start() {
+  await store.init();
+  app.listen(PORT, () => {
+    console.log(`DB Wizard running on http://localhost:${PORT}`);
+  });
+}
+
+start().catch((err) => {
+  console.error("Failed to start DB Wizard:", err);
+  process.exit(1);
 });

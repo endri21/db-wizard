@@ -10,7 +10,9 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "db:init": "node -e \"require('./server/store').init().then(()=>{console.log('DB init completed.'); process.exit(0);}).catch(err=>{console.error(err);process.exit(1);})\"",
+    "db:seed": "node server/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

@@ -1,172 +1,159 @@
-const fs = require("fs");
-const path = require("path");
+const { Pool } = require("pg");
 
-const dataDir = path.join(__dirname, "..", "data");
-const dbFile = path.join(dataDir, "app-data.json");
+const connectionString = process.env.APP_DATABASE_URL || process.env.DATABASE_URL;
 
-const initialState = {
-  counters: {
-    users: 1,
-    db_connections: 1,
-    saved_queries: 1,
-  },
-  users: [],
-  db_connections: [],
-  saved_queries: [],
-};
-
-function nowIso() {
-  return new Date().toISOString();
+if (!connectionString) {
+  throw new Error("APP_DATABASE_URL (or DATABASE_URL) is required for app persistence.");
 }
 
-function ensureDbFile() {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  if (!fs.existsSync(dbFile)) {
-    fs.writeFileSync(dbFile, JSON.stringify(initialState, null, 2));
-  }
+const pool = new Pool({ connectionString });
+
+async function init() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT,
+      provider TEXT NOT NULL DEFAULT 'local',
+      provider_id TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS db_connections (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      engine TEXT NOT NULL,
+      connection_string TEXT,
+      server TEXT,
+      port TEXT,
+      database_name TEXT,
+      db_username TEXT,
+      db_password TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS saved_queries (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      connection_id INTEGER NOT NULL REFERENCES db_connections(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      sql_text TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
 }
 
-function readState() {
-  ensureDbFile();
-  const raw = fs.readFileSync(dbFile, "utf8");
-  return JSON.parse(raw);
+async function findUserById(id) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE id = $1", [Number(id)]);
+  return rows[0] || null;
 }
 
-function writeState(state) {
-  const tmpFile = `${dbFile}.tmp`;
-  fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2));
-  fs.renameSync(tmpFile, dbFile);
+async function findUserByUsername(username) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
+  return rows[0] || null;
 }
 
-function nextId(state, tableName) {
-  const id = state.counters[tableName];
-  state.counters[tableName] += 1;
-  return id;
+async function findUserByProvider(provider, providerId) {
+  const { rows } = await pool.query("SELECT * FROM users WHERE provider = $1 AND provider_id = $2", [provider, providerId]);
+  return rows[0] || null;
 }
 
-function findUserById(id) {
-  const state = readState();
-  return state.users.find((u) => u.id === Number(id)) || null;
-}
-
-function findUserByUsername(username) {
-  const state = readState();
-  return state.users.find((u) => u.username === username) || null;
-}
-
-function findUserByProvider(provider, providerId) {
-  const state = readState();
-  return state.users.find((u) => u.provider === provider && u.provider_id === providerId) || null;
-}
-
-function createUser({ username, password_hash = null, provider = "local", provider_id = null }) {
-  const state = readState();
-  const user = {
-    id: nextId(state, "users"),
-    username,
-    password_hash,
-    provider,
-    provider_id,
-    created_at: nowIso(),
-  };
-  state.users.push(user);
-  writeState(state);
-  return user;
-}
-
-function listConnectionsByUserId(userId) {
-  const state = readState();
-  return state.db_connections
-    .filter((c) => c.user_id === Number(userId))
-    .sort((a, b) => b.id - a.id);
-}
-
-function findConnectionByIdAndUser(connectionId, userId) {
-  const state = readState();
-  return (
-    state.db_connections.find((c) => c.id === Number(connectionId) && c.user_id === Number(userId)) || null
+async function createUser({ username, password_hash = null, provider = "local", provider_id = null }) {
+  const { rows } = await pool.query(
+    `INSERT INTO users (username, password_hash, provider, provider_id)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [username, password_hash, provider, provider_id]
   );
+  return rows[0];
 }
 
-function createConnection(payload) {
-  const state = readState();
-  const record = {
-    id: nextId(state, "db_connections"),
-    user_id: Number(payload.user_id),
-    name: payload.name,
-    engine: payload.engine,
-    connection_string: payload.connection_string || null,
-    server: payload.server || null,
-    port: payload.port || null,
-    database_name: payload.database_name || null,
-    db_username: payload.db_username || null,
-    db_password: payload.db_password || null,
-    created_at: nowIso(),
-  };
-  state.db_connections.push(record);
-  writeState(state);
-  return record;
-}
-
-function listSavedQueries(userId, connectionId) {
-  const state = readState();
-  return state.saved_queries
-    .filter((q) => q.user_id === Number(userId) && q.connection_id === Number(connectionId))
-    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at) || b.id - a.id);
-}
-
-function findSavedQuery(savedQueryId, connectionId, userId) {
-  const state = readState();
-  return (
-    state.saved_queries.find(
-      (q) => q.id === Number(savedQueryId) && q.connection_id === Number(connectionId) && q.user_id === Number(userId)
-    ) || null
+async function listConnectionsByUserId(userId) {
+  const { rows } = await pool.query(
+    "SELECT * FROM db_connections WHERE user_id = $1 ORDER BY id DESC",
+    [Number(userId)]
   );
+  return rows;
 }
 
-function createSavedQuery({ user_id, connection_id, name, sql_text }) {
-  const state = readState();
-  const ts = nowIso();
-  const query = {
-    id: nextId(state, "saved_queries"),
-    user_id: Number(user_id),
-    connection_id: Number(connection_id),
-    name,
-    sql_text,
-    created_at: ts,
-    updated_at: ts,
-  };
-  state.saved_queries.push(query);
-  writeState(state);
-  return query;
+async function findConnectionByIdAndUser(connectionId, userId) {
+  const { rows } = await pool.query(
+    "SELECT * FROM db_connections WHERE id = $1 AND user_id = $2",
+    [Number(connectionId), Number(userId)]
+  );
+  return rows[0] || null;
 }
 
-function updateSavedQuery(savedQueryId, { name, sql_text }) {
-  const state = readState();
-  const index = state.saved_queries.findIndex((q) => q.id === Number(savedQueryId));
-  if (index === -1) return null;
-
-  state.saved_queries[index] = {
-    ...state.saved_queries[index],
-    name,
-    sql_text,
-    updated_at: nowIso(),
-  };
-  writeState(state);
-  return state.saved_queries[index];
+async function createConnection(payload) {
+  const { rows } = await pool.query(
+    `INSERT INTO db_connections (
+      user_id, name, engine, connection_string, server, port, database_name, db_username, db_password
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING *`,
+    [
+      Number(payload.user_id),
+      payload.name,
+      payload.engine,
+      payload.connection_string || null,
+      payload.server || null,
+      payload.port || null,
+      payload.database_name || null,
+      payload.db_username || null,
+      payload.db_password || null,
+    ]
+  );
+  return rows[0];
 }
 
-function deleteSavedQuery(savedQueryId) {
-  const state = readState();
-  const before = state.saved_queries.length;
-  state.saved_queries = state.saved_queries.filter((q) => q.id !== Number(savedQueryId));
-  writeState(state);
-  return before !== state.saved_queries.length;
+async function listSavedQueries(userId, connectionId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM saved_queries
+     WHERE user_id = $1 AND connection_id = $2
+     ORDER BY updated_at DESC, id DESC`,
+    [Number(userId), Number(connectionId)]
+  );
+  return rows;
+}
+
+async function findSavedQuery(savedQueryId, connectionId, userId) {
+  const { rows } = await pool.query(
+    `SELECT * FROM saved_queries
+     WHERE id = $1 AND connection_id = $2 AND user_id = $3`,
+    [Number(savedQueryId), Number(connectionId), Number(userId)]
+  );
+  return rows[0] || null;
+}
+
+async function createSavedQuery({ user_id, connection_id, name, sql_text }) {
+  const { rows } = await pool.query(
+    `INSERT INTO saved_queries (user_id, connection_id, name, sql_text)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [Number(user_id), Number(connection_id), name, sql_text]
+  );
+  return rows[0];
+}
+
+async function updateSavedQuery(savedQueryId, { name, sql_text }) {
+  const { rows } = await pool.query(
+    `UPDATE saved_queries
+     SET name = $1, sql_text = $2, updated_at = NOW()
+     WHERE id = $3
+     RETURNING *`,
+    [name, sql_text, Number(savedQueryId)]
+  );
+  return rows[0] || null;
+}
+
+async function deleteSavedQuery(savedQueryId) {
+  const result = await pool.query("DELETE FROM saved_queries WHERE id = $1", [Number(savedQueryId)]);
+  return result.rowCount > 0;
 }
 
 module.exports = {
+  init,
   findUserById,
   findUserByUsername,
   findUserByProvider,
