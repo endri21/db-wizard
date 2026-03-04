@@ -1,0 +1,31 @@
+{
+  "name": "db-wizard",
+  "version": "1.0.0",
+  "description": "Node + React multi-database access tool with local auth and OAuth",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test",
+    "db:init": "node -e \"require('./server/store').init().then(()=>{console.log('DB init completed.'); process.exit(0);}).catch(err=>{console.error(err);process.exit(1);})\"",
+    "db:seed": "node server/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "mssql": "^11.0.1",
+    "mysql2": "^3.11.4",
+    "passport": "^0.7.0",
+    "passport-azure-ad-oauth2": "^0.0.4",
+    "passport-github2": "^0.1.12",
+    "passport-google-oauth20": "^2.0.0",
+    "pg": "^8.13.1"
+  }
+}
