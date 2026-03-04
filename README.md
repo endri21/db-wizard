@@ -1,9 +1,10 @@
-# DB Wizard (Node + React)
+# DB Wizard (Node + Express + Multi-Page UI)
 
-A multi-database access tool implemented with **Node.js (Express)** and **React**.
+A multi-database access tool implemented with **Node.js (Express)** and a modern **multi-page web UI**.
 
 ## Features
 
+- Multi-page UX: Login page, Dashboard page, and dedicated SQL Workspace page.
 - Login with username/password.
 - Organization login with OAuth providers: Google, GitHub, Azure (when configured).
 - Management dashboard to add connections using:
@@ -34,8 +35,14 @@ On startup, the server auto-creates required tables if they do not exist.
 ## Tech Stack
 
 - Backend: Node.js + Express + Passport + PostgreSQL (`pg`) for app persistence.
-- Frontend: React (CDN) single-page UI.
+- Frontend: Multi-page HTML + modern vanilla JavaScript UI served by Express.
 - Target query engines: PostgreSQL (`pg`), MySQL (`mysql2`), SQL Server (`mssql`).
+
+## UI Pages
+
+- `/` → Login / Register / OAuth entry
+- `/dashboard` → Connection management
+- `/workspace/:id` → SQL IDE for one connection
 
 ## Run
 
@@ -56,6 +63,51 @@ If you run `npm run db:init` without setting env vars, the app now falls back to
 You can still override with `APP_DATABASE_URL` or `DATABASE_URL`.
 
 ## Database initialization and seed
+
+### Fix for `no pg_hba.conf entry ... no encryption`
+
+That error means your PostgreSQL server accepts SSL connections for your host/user/db, but the client attempted non-SSL.
+
+Set:
+
+```bash
+APP_DATABASE_SSLMODE=require
+APP_DATABASE_SSL_REJECT_UNAUTHORIZED=false
+```
+
+If your server has a trusted CA chain configured, you can harden this with:
+
+```bash
+APP_DATABASE_SSLMODE=verify-full
+APP_DATABASE_SSL_REJECT_UNAUTHORIZED=true
+```
+
+For **dbt** specifically, set in `profiles.yml` under your target:
+
+```yaml
+outputs:
+  dev:
+    type: postgres
+    host: <host>
+    user: <user>
+    password: <password>
+    dbname: <dbname>
+    schema: public
+    port: 5432
+    sslmode: require
+```
+
+### Fix for `getaddrinfo ENOTFOUND base`
+
+This usually means the **host part** of your connection string is wrong (for example, it resolves to `base` which DNS cannot resolve).
+
+Use the correct connection string format:
+
+- PostgreSQL: `postgresql://user:password@host:5432/database`
+- MySQL: `mysql://user:password@host:3306/database`
+- MSSQL: `mssql://user:password@host:1433/database`
+
+If you use server fields instead of connection string, make sure `server`, `database_name`, `db_username`, and `db_password` are all filled.
 
 1. Create a PostgreSQL database (example):
 

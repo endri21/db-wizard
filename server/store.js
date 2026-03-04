@@ -10,17 +10,31 @@ function resolveConnectionString() {
   );
 }
 
+function resolveSslConfig() {
+  const sslMode = String(process.env.APP_DATABASE_SSLMODE || "").toLowerCase();
+  const sslEnabled = ["require", "verify-ca", "verify-full", "true", "1"].includes(sslMode);
+  if (!sslEnabled) {
+    return undefined;
+  }
+
+  const rejectUnauthorized =
+    String(process.env.APP_DATABASE_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true";
+
+  return { rejectUnauthorized };
+}
+
 let pool;
 
 function getPool() {
   if (!pool) {
     const connectionString = resolveConnectionString();
+    const ssl = resolveSslConfig();
     if (!connectionString) {
       throw new Error(
         "APP_DATABASE_URL (or DATABASE_URL) is required for app persistence. Set it in .env or shell env."
       );
     }
-    pool = new Pool({ connectionString });
+    pool = new Pool({ connectionString, ssl });
   }
   return pool;
 }

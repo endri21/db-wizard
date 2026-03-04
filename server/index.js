@@ -57,7 +57,22 @@ async function getOwnedSavedQuery(savedQueryId, connectionId, userId) {
 }
 
 app.get("/", (_req, res) => {
-  res.sendFile(path.join(__dirname, "..", "client", "index.html"));
+  res.sendFile(path.join(__dirname, "..", "client", "login.html"));
+});
+
+function requireAuthPage(req, res, next) {
+  if (!req.user) {
+    return res.redirect("/");
+  }
+  return next();
+}
+
+app.get("/dashboard", requireAuthPage, (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "client", "dashboard.html"));
+});
+
+app.get("/workspace/:id", requireAuthPage, (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "client", "workspace.html"));
 });
 
 app.get("/api/auth/providers", (_req, res) => {
@@ -123,7 +138,7 @@ strategies.forEach((provider) => {
   app.get(`/auth/${provider}/callback`, (req, res, next) => {
     if (!passport._strategy(provider)) return res.status(400).json({ error: `${provider} OAuth is not configured.` });
     return passport.authenticate(provider, { failureRedirect: "/?error=oauth" })(req, res, () => {
-      res.redirect("/");
+      res.redirect("/dashboard");
     });
   });
 });

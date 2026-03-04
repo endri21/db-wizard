@@ -9,7 +9,16 @@ const connectionString =
   process.env.DATABASE_URL ||
   "postgresql://postgres:postgres@localhost:5432/db_wizard";
 
-const pool = new Pool({ connectionString });
+const sslMode = String(process.env.APP_DATABASE_SSLMODE || "").toLowerCase();
+const sslEnabled = ["require", "verify-ca", "verify-full", "true", "1"].includes(sslMode);
+const ssl = sslEnabled
+  ? {
+      rejectUnauthorized:
+        String(process.env.APP_DATABASE_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true",
+    }
+  : undefined;
+
+const pool = new Pool({ connectionString, ssl });
 
 async function seed() {
   await store.init();
