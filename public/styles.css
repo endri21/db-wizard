@@ -12,10 +12,14 @@ button, .button { background: #2563eb; color: white; border: none; border-radius
 .grid { display: grid; gap: .8rem; }
 .two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .full { grid-column: 1 / -1; }
-.muted { color: #6b7280; }
+.muted { color: #6b7280; font-size: .9rem; }
 .workspace { display: grid; gap: 1rem; grid-template-columns: 320px 1fr; }
 .sidebar ul { list-style: none; padding-left: 0; }
 .sidebar li { padding: .3rem 0; border-bottom: 1px solid #e5e7eb; }
 .sidebar li button { width: 100%; text-align: left; }
+.actions-row { display: flex; gap: .5rem; margin: .5rem 0; }
+.saved-query-list { list-style: none; padding-left: 0; }
+.saved-query-list li { border: 1px solid #e5e7eb; border-radius: 8px; padding: .5rem; margin-bottom: .5rem; }
+.saved-query-list p { margin: .25rem 0; }
 table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
 th, td { border: 1px solid #e5e7eb; padding: .5rem; text-align: left; }

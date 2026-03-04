@@ -1,7 +1,6 @@
 const mysql = require("mysql2/promise");
 const { Client } = require("pg");
 const sql = require("mssql");
-const Database = require("better-sqlite3");
 const { ensureReadOnlyQuery } = require("./queryGuard");
 
 function normalizeEngine(engine) {
@@ -25,15 +24,6 @@ function buildConfig(conn) {
 async function listTables(conn) {
   const engine = normalizeEngine(conn.engine);
   const cfg = buildConfig(conn);
-
-  if (engine === "sqlite") {
-    const sqlite = new Database((cfg.connectionString || "sqlite:///:memory:").replace("sqlite://", ""));
-    const rows = sqlite
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-      .all();
-    sqlite.close();
-    return rows.map((r) => r.name);
-  }
 
   if (engine === "postgresql") {
     const client = new Client(cfg.connectionString ? { connectionString: cfg.connectionString } : cfg);
@@ -67,26 +57,20 @@ async function listTables(conn) {
             options: { encrypt: false, trustServerCertificate: true },
           }
     );
-    const result = await pool.request().query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME");
+    const result = await pool
+      .request()
+      .query("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE' ORDER BY TABLE_NAME");
     await pool.close();
     return result.recordset.map((r) => r.TABLE_NAME);
   }
 
-  throw new Error(`Unsupported engine: ${conn.engine}`);
+  throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
 }
 
 async function runQuery(conn, query) {
   ensureReadOnlyQuery(query);
   const engine = normalizeEngine(conn.engine);
   const cfg = buildConfig(conn);
-
-  if (engine === "sqlite") {
-    const sqlite = new Database((cfg.connectionString || "sqlite:///:memory:").replace("sqlite://", ""));
-    const rows = sqlite.prepare(query).all();
-    sqlite.close();
-    const columns = rows.length ? Object.keys(rows[0]) : [];
-    return { columns, rows: rows.slice(0, 200) };
-  }
 
   if (engine === "postgresql") {
     const client = new Client(cfg.connectionString ? { connectionString: cfg.connectionString } : cfg);
@@ -129,7 +113,7 @@ async function runQuery(conn, query) {
     };
   }
 
-  throw new Error(`Unsupported engine: ${conn.engine}`);
+  throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
 }
 
 module.exports = { listTables, runQuery };

@@ -3,28 +3,25 @@ require("dotenv").config();
 const path = require("path");
 const express = require("express");
 const session = require("express-session");
-const SQLiteStore = require("connect-sqlite3")(session);
 const bcrypt = require("bcryptjs");
 const cors = require("cors");
 
-const db = require("./store");
+const store = require("./store");
 const { listTables, runQuery } = require("./dbClients");
+const { ensureReadOnlyQuery } = require("./queryGuard");
 const { configurePassport, passport } = require("./auth");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const findUserById = (id) => db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-const findUserByUsername = (username) => db.prepare("SELECT * FROM users WHERE username = ?").get(username);
-const findUserByProvider = (provider, providerId) =>
-  db.prepare("SELECT * FROM users WHERE provider = ? AND provider_id = ?").get(provider, providerId);
+const findUserById = (id) => store.findUserById(id);
+const findUserByUsername = (username) => store.findUserByUsername(username);
+const findUserByProvider = (provider, providerId) => store.findUserByProvider(provider, providerId);
 
 const upsertOAuthUser = (provider, providerId, username) => {
   const existing = findUserByProvider(provider, providerId);
   if (existing) return existing;
-
-  db.prepare("INSERT INTO users (username, provider, provider_id) VALUES (?, ?, ?)").run(username, provider, providerId);
-  return findUserByUsername(username);
+  return store.createUser({ username, provider, provider_id: providerId });
 };
 
 configurePassport({ upsertOAuthUser, findUserById });
@@ -34,7 +31,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   session({
-    store: new SQLiteStore({ db: "sessions.db", dir: "." }),
     secret: process.env.SESSION_SECRET || "change-me",
     resave: false,
     saveUninitialized: false,
@@ -48,10 +44,16 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 app.use("/client", express.static(path.join(__dirname, "..", "client")));
 
 function requireAuth(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+  if (!req.user) return res.status(401).json({ error: "Unauthorized" });
   return next();
+}
+
+function getOwnedConnection(connectionId, userId) {
+  return store.findConnectionByIdAndUser(connectionId, userId);
+}
+
+function getOwnedSavedQuery(savedQueryId, connectionId, userId) {
+  return store.findSavedQuery(savedQueryId, connectionId, userId);
 }
 
 app.get("/", (_req, res) => {
@@ -77,10 +79,7 @@ app.post("/api/register", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  db.prepare("INSERT INTO users (username, password_hash, provider) VALUES (?, ?, 'local')").run(
-    username,
-    passwordHash
-  );
+  store.createUser({ username, password_hash: passwordHash, provider: "local" });
   return res.json({ message: "Registration successful." });
 });
 
@@ -108,7 +107,8 @@ app.get("/api/me", (req, res) => {
 });
 
 app.post("/api/logout", (req, res) => {
-  req.logout(() => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ error: "Logout failed." });
     req.session.destroy(() => res.json({ message: "Logged out" }));
   });
 });
@@ -129,40 +129,29 @@ strategies.forEach((provider) => {
 });
 
 app.get("/api/connections", requireAuth, (req, res) => {
-  const rows = db.prepare("SELECT * FROM db_connections WHERE user_id = ? ORDER BY id DESC").all(req.user.id);
-  res.json(rows);
+  res.json(store.listConnectionsByUserId(req.user.id));
 });
 
 app.post("/api/connections", requireAuth, (req, res) => {
   const { name, engine, connection_string, server, port, database_name, db_username, db_password } = req.body;
   if (!name || !engine) return res.status(400).json({ error: "Connection name and engine are required." });
 
-  const result = db
-    .prepare(
-      `INSERT INTO db_connections
-      (user_id, name, engine, connection_string, server, port, database_name, db_username, db_password)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      req.user.id,
-      name,
-      engine,
-      connection_string || null,
-      server || null,
-      port || null,
-      database_name || null,
-      db_username || null,
-      db_password || null
-    );
-
-  const conn = db.prepare("SELECT * FROM db_connections WHERE id = ?").get(result.lastInsertRowid);
+  const conn = store.createConnection({
+    user_id: req.user.id,
+    name,
+    engine,
+    connection_string,
+    server,
+    port,
+    database_name,
+    db_username,
+    db_password,
+  });
   res.json(conn);
 });
 
 app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
-  const conn = db
-    .prepare("SELECT * FROM db_connections WHERE id = ? AND user_id = ?")
-    .get(req.params.id, req.user.id);
+  const conn = getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
@@ -174,14 +163,88 @@ app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
 });
 
 app.post("/api/connections/:id/query", requireAuth, async (req, res) => {
-  const conn = db
-    .prepare("SELECT * FROM db_connections WHERE id = ? AND user_id = ?")
-    .get(req.params.id, req.user.id);
+  const conn = getOwnedConnection(req.params.id, req.user.id);
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
     const result = await runQuery(conn, req.body.query);
     res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/connections/:id/saved-queries", requireAuth, (req, res) => {
+  const conn = getOwnedConnection(req.params.id, req.user.id);
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  res.json(store.listSavedQueries(req.user.id, req.params.id));
+});
+
+app.post("/api/connections/:id/saved-queries", requireAuth, (req, res) => {
+  const conn = getOwnedConnection(req.params.id, req.user.id);
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  const { name, sql_text } = req.body;
+  if (!name || !sql_text) return res.status(400).json({ error: "Query name and SQL text are required." });
+
+  try {
+    ensureReadOnlyQuery(sql_text);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const saved = store.createSavedQuery({
+    user_id: req.user.id,
+    connection_id: req.params.id,
+    name: name.trim(),
+    sql_text: sql_text.trim(),
+  });
+  res.json(saved);
+});
+
+app.put("/api/connections/:id/saved-queries/:queryId", requireAuth, (req, res) => {
+  const conn = getOwnedConnection(req.params.id, req.user.id);
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  const existing = getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
+  if (!existing) return res.status(404).json({ error: "Saved query not found." });
+
+  const { name, sql_text } = req.body;
+  if (!name || !sql_text) return res.status(400).json({ error: "Query name and SQL text are required." });
+
+  try {
+    ensureReadOnlyQuery(sql_text);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  const saved = store.updateSavedQuery(req.params.queryId, {
+    name: name.trim(),
+    sql_text: sql_text.trim(),
+  });
+
+  res.json(saved);
+});
+
+app.delete("/api/connections/:id/saved-queries/:queryId", requireAuth, (req, res) => {
+  const existing = getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
+  if (!existing) return res.status(404).json({ error: "Saved query not found." });
+
+  store.deleteSavedQuery(req.params.queryId);
+  res.json({ message: "Saved query deleted." });
+});
+
+app.post("/api/connections/:id/saved-queries/:queryId/run", requireAuth, async (req, res) => {
+  const conn = getOwnedConnection(req.params.id, req.user.id);
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  const saved = getOwnedSavedQuery(req.params.queryId, req.params.id, req.user.id);
+  if (!saved) return res.status(404).json({ error: "Saved query not found." });
+
+  try {
+    const result = await runQuery(conn, saved.sql_text);
+    res.json({ ...result, saved_query: { id: saved.id, name: saved.name } });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

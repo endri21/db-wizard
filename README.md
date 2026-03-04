@@ -11,12 +11,29 @@ A multi-database access tool implemented with **Node.js (Express)** and **React*
   - server + port + db + username + password.
 - Explore selected database tables in the left sidebar.
 - Run simple read-only queries and view results.
+- Advanced SQL IDE basics:
+  - save queries per connection,
+  - list saved queries,
+  - load a saved query into editor,
+  - update saved query,
+  - delete saved query,
+  - run saved query directly.
 
 ## Tech Stack
 
-- Backend: Node.js + Express + Passport + SQLite store.
+- Backend: Node.js + Express + Passport + file-backed JSON data store.
 - Frontend: React (CDN) single-page UI.
-- Database clients: PostgreSQL (`pg`), MySQL (`mysql2`), SQL Server (`mssql`), SQLite (`better-sqlite3`).
+- Database clients: PostgreSQL (`pg`), MySQL (`mysql2`), SQL Server (`mssql`).
+
+## Why install is more stable on Windows now
+
+## Merge conflict note
+
+If GitHub shows conflicts, this branch now contains a reconciled baseline for these files: `.gitignore`, `README.md`, `client/app.jsx`, `package.json`, `public/styles.css`, `server/dbClients.js`, `server/index.js`, and `server/store.js`.
+
+- Removed native local persistence dependencies (`better-sqlite3` and `connect-sqlite3`) from app storage/session layer.
+- Local app data now persists in `data/app-data.json`.
+- This avoids node-gyp Python/toolchain failures for app bootstrapping.
 
 ## Run
 

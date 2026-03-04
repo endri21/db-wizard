@@ -6,6 +6,9 @@ function App() {
   const [connections, setConnections] = useState([]);
   const [selected, setSelected] = useState(null);
   const [tables, setTables] = useState([]);
+  const [savedQueries, setSavedQueries] = useState([]);
+  const [editingSavedQueryId, setEditingSavedQueryId] = useState(null);
+  const [queryName, setQueryName] = useState("");
   const [query, setQuery] = useState("SELECT 1 as ok");
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -14,7 +17,7 @@ function App() {
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [connForm, setConnForm] = useState({
     name: "",
-    engine: "sqlite",
+    engine: "postgresql",
     connection_string: "",
     server: "",
     port: "",
@@ -53,6 +56,11 @@ function App() {
   const loadTables = async (connection) => {
     const data = await request(`/api/connections/${connection.id}/tables`);
     setTables(data.tables || []);
+  };
+
+  const loadSavedQueries = async (connection) => {
+    const data = await request(`/api/connections/${connection.id}/saved-queries`);
+    setSavedQueries(data);
   };
 
   useEffect(() => {
@@ -94,6 +102,7 @@ function App() {
     setConnections([]);
     setSelected(null);
     setTables([]);
+    setSavedQueries([]);
     setResult(null);
   };
 
@@ -104,7 +113,7 @@ function App() {
       await request("/api/connections", { method: "POST", body: JSON.stringify(connForm) });
       setConnForm({
         name: "",
-        engine: "sqlite",
+        engine: "postgresql",
         connection_string: "",
         server: "",
         port: "",
@@ -121,9 +130,11 @@ function App() {
   const openConnection = async (connection) => {
     setSelected(connection);
     setResult(null);
+    setEditingSavedQueryId(null);
+    setQueryName("");
     setError("");
     try {
-      await loadTables(connection);
+      await Promise.all([loadTables(connection), loadSavedQueries(connection)]);
     } catch (err) {
       setError(err.message);
     }
@@ -138,6 +149,66 @@ function App() {
         body: JSON.stringify({ query }),
       });
       setResult(data);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const saveCurrentQuery = async () => {
+    if (!selected) return;
+    setError("");
+    try {
+      if (editingSavedQueryId) {
+        await request(`/api/connections/${selected.id}/saved-queries/${editingSavedQueryId}`, {
+          method: "PUT",
+          body: JSON.stringify({ name: queryName, sql_text: query }),
+        });
+      } else {
+        await request(`/api/connections/${selected.id}/saved-queries`, {
+          method: "POST",
+          body: JSON.stringify({ name: queryName, sql_text: query }),
+        });
+      }
+      await loadSavedQueries(selected);
+      setEditingSavedQueryId(null);
+      setQueryName("");
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const loadSavedQueryIntoEditor = (item) => {
+    setEditingSavedQueryId(item.id);
+    setQueryName(item.name);
+    setQuery(item.sql_text);
+  };
+
+  const deleteSavedQuery = async (id) => {
+    if (!selected) return;
+    setError("");
+    try {
+      await request(`/api/connections/${selected.id}/saved-queries/${id}`, { method: "DELETE" });
+      await loadSavedQueries(selected);
+      if (editingSavedQueryId === id) {
+        setEditingSavedQueryId(null);
+        setQueryName("");
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const runSavedQuery = async (item) => {
+    if (!selected) return;
+    setError("");
+    try {
+      const data = await request(`/api/connections/${selected.id}/saved-queries/${item.id}/run`, {
+        method: "POST",
+      });
+      setResult(data);
+      setQuery(item.sql_text);
+      setQueryName(item.name);
+      setEditingSavedQueryId(item.id);
     } catch (err) {
       setError(err.message);
     }
@@ -213,14 +284,13 @@ function App() {
           <label>Connection Name<input value={connForm.name} onChange={(e) => setConnForm({ ...connForm, name: e.target.value })} /></label>
           <label>Engine
             <select value={connForm.engine} onChange={(e) => setConnForm({ ...connForm, engine: e.target.value })}>
-              <option value="sqlite">SQLite</option>
               <option value="postgresql">PostgreSQL</option>
               <option value="mysql">MySQL</option>
               <option value="mssql">MSSQL</option>
             </select>
           </label>
           <label className="full">Connection String<input value={connForm.connection_string} onChange={(e) => setConnForm({ ...connForm, connection_string: e.target.value })} /></label>
-          <p className="full muted">Or server credentials:</p>
+          <p className="full muted">Supported engines: PostgreSQL, MySQL, MSSQL. Or use server credentials:</p>
           <label>Server<input value={connForm.server} onChange={(e) => setConnForm({ ...connForm, server: e.target.value })} /></label>
           <label>Port<input value={connForm.port} onChange={(e) => setConnForm({ ...connForm, port: e.target.value })} /></label>
           <label>Database<input value={connForm.database_name} onChange={(e) => setConnForm({ ...connForm, database_name: e.target.value })} /></label>
@@ -250,8 +320,33 @@ function App() {
           {!selected && <p>Select a connection first.</p>}
           {selected && (
             <>
+              <label>
+                Query Name (for save/update)
+                <input value={queryName} onChange={(e) => setQueryName(e.target.value)} placeholder="e.g. Top customers" />
+              </label>
               <textarea rows="8" value={query} onChange={(e) => setQuery(e.target.value)} />
-              <button onClick={runSimpleQuery}>Run (read-only)</button>
+              <div className="actions-row">
+                <button onClick={runSimpleQuery}>Run (read-only)</button>
+                <button onClick={saveCurrentQuery}>{editingSavedQueryId ? "Update Saved Query" : "Save Query"}</button>
+              </div>
+
+              <h4>Saved Queries</h4>
+              <ul className="saved-query-list">
+                {savedQueries.map((item) => (
+                  <li key={item.id}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <p className="muted">{item.sql_text.slice(0, 120)}</p>
+                    </div>
+                    <div className="actions-row">
+                      <button onClick={() => loadSavedQueryIntoEditor(item)}>Load</button>
+                      <button onClick={() => runSavedQuery(item)}>Run</button>
+                      <button onClick={() => deleteSavedQuery(item.id)}>Delete</button>
+                    </div>
+                  </li>
+                ))}
+                {!savedQueries.length && <li>No saved queries yet.</li>}
+              </ul>
             </>
           )}
 
