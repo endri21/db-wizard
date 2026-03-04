@@ -169,13 +169,42 @@ app.post("/api/connections", requireAuth, async (req, res) => {
   res.json(conn);
 });
 
+
+app.put("/api/connections/:id", requireAuth, async (req, res) => {
+  const existing = await getOwnedConnection(req.params.id, req.user.id);
+  if (!existing) return res.status(404).json({ error: "Connection not found." });
+
+  const { name, engine, connection_string, server, port, database_name, db_username, db_password } = req.body;
+  if (!name || !engine) return res.status(400).json({ error: "Connection name and engine are required." });
+
+  const updated = await store.updateConnection(req.params.id, {
+    user_id: req.user.id,
+    name,
+    engine,
+    connection_string,
+    server,
+    port,
+    database_name,
+    db_username,
+    db_password,
+  });
+
+  res.json(updated);
+});
+
+app.delete("/api/connections/:id", requireAuth, async (req, res) => {
+  const deleted = await store.deleteConnection(req.params.id, req.user.id);
+  if (!deleted) return res.status(404).json({ error: "Connection not found." });
+  res.json({ message: "Connection deleted." });
+});
+
 app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
   const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });
 
   try {
-    const tables = await listTables(conn);
-    res.json({ tables });
+    const schemas = await listTables(conn);
+    res.json({ schemas });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

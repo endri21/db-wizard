@@ -72,6 +72,40 @@ function extractHostFromConnectionString(connectionString) {
   }
 }
 
+
+function groupObjectsBySchema(rows) {
+  const grouped = new Map();
+  rows.forEach((row) => {
+    const schema = row.schema || row.table_schema || row.routine_schema || "default";
+    if (!grouped.has(schema)) grouped.set(schema, { schema, tables: [], procedures: [] });
+  });
+  return grouped;
+}
+
+function formatSchemaTree(tableRows, procedureRows) {
+  const grouped = groupObjectsBySchema([...tableRows, ...procedureRows]);
+
+  tableRows.forEach((row) => {
+    const schema = row.schema || row.table_schema || "default";
+    const name = row.name || row.table_name;
+    grouped.get(schema).tables.push({ name });
+  });
+
+  procedureRows.forEach((row) => {
+    const schema = row.schema || row.routine_schema || "default";
+    const name = row.name || row.routine_name;
+    grouped.get(schema).procedures.push({ name });
+  });
+
+  return Array.from(grouped.values())
+    .map((s) => ({
+      schema: s.schema,
+      tables: s.tables.sort((a, b) => a.name.localeCompare(b.name)),
+      procedures: s.procedures.sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => a.schema.localeCompare(b.schema));
+}
+
 function rethrowFriendlyConnectionError(err, cfg) {
   if (err?.code === "ENOTFOUND") {
     const host = cfg?.connectionString
@@ -92,30 +126,44 @@ async function listTables(conn) {
     if (engine === "postgresql") {
       const client = new Client(cfg.connectionString ? { connectionString: cfg.connectionString } : cfg);
       await client.connect();
-      const result = await client.query(`
-        SELECT table_schema, table_name
+      const tableResult = await client.query(`
+        SELECT table_schema AS schema, table_name AS name
         FROM information_schema.tables
         WHERE table_type = 'BASE TABLE'
           AND table_schema NOT IN ('pg_catalog', 'information_schema')
         ORDER BY table_schema, table_name
       `);
+      const procedureResult = await client.query(`
+        SELECT routine_schema AS schema, routine_name AS name
+        FROM information_schema.routines
+        WHERE routine_type = 'PROCEDURE'
+          AND routine_schema NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY routine_schema, routine_name
+      `);
       await client.end();
-      return result.rows.map((r) => ({ schema: r.table_schema, name: r.table_name }));
+      return formatSchemaTree(tableResult.rows, procedureResult.rows);
     }
 
     if (engine === "mysql") {
       const connection = cfg.connectionString
         ? await mysql.createConnection(cfg.connectionString)
         : await mysql.createConnection(cfg);
-      const [rows] = await connection.query(`
-        SELECT TABLE_SCHEMA, TABLE_NAME
+      const [tableRows] = await connection.query(`
+        SELECT TABLE_SCHEMA AS schema, TABLE_NAME AS name
         FROM INFORMATION_SCHEMA.TABLES
         WHERE TABLE_TYPE = 'BASE TABLE'
           AND TABLE_SCHEMA NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
         ORDER BY TABLE_SCHEMA, TABLE_NAME
       `);
+      const [procedureRows] = await connection.query(`
+        SELECT ROUTINE_SCHEMA AS schema, ROUTINE_NAME AS name
+        FROM INFORMATION_SCHEMA.ROUTINES
+        WHERE ROUTINE_TYPE = 'PROCEDURE'
+          AND ROUTINE_SCHEMA NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
+        ORDER BY ROUTINE_SCHEMA, ROUTINE_NAME
+      `);
       await connection.end();
-      return rows.map((row) => ({ schema: row.TABLE_SCHEMA, name: row.TABLE_NAME }));
+      return formatSchemaTree(tableRows, procedureRows);
     }
 
     if (engine === "mssql") {
@@ -131,16 +179,24 @@ async function listTables(conn) {
               options: { encrypt: false, trustServerCertificate: true },
             }
       );
-      const result = await pool
+      const tableResult = await pool
         .request()
         .query(`
-          SELECT TABLE_SCHEMA, TABLE_NAME
+          SELECT TABLE_SCHEMA AS schema, TABLE_NAME AS name
           FROM INFORMATION_SCHEMA.TABLES
           WHERE TABLE_TYPE='BASE TABLE'
           ORDER BY TABLE_SCHEMA, TABLE_NAME
         `);
+      const procedureResult = await pool
+        .request()
+        .query(`
+          SELECT ROUTINE_SCHEMA AS schema, ROUTINE_NAME AS name
+          FROM INFORMATION_SCHEMA.ROUTINES
+          WHERE ROUTINE_TYPE='PROCEDURE'
+          ORDER BY ROUTINE_SCHEMA, ROUTINE_NAME
+        `);
       await pool.close();
-      return result.recordset.map((r) => ({ schema: r.TABLE_SCHEMA, name: r.TABLE_NAME }));
+      return formatSchemaTree(tableResult.recordset, procedureResult.recordset);
     }
 
     throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
@@ -148,6 +204,7 @@ async function listTables(conn) {
     rethrowFriendlyConnectionError(err, cfg);
   }
 }
+
 
 async function runQuery(conn, query) {
   ensureReadOnlyQuery(query);

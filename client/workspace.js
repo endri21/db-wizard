@@ -1,4 +1,5 @@
 let editingSavedQueryId = null;
+let currentEngine = "postgresql";
 
 function connectionIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -38,44 +39,127 @@ function renderResult(result) {
   });
 }
 
-function normalizeTableRow(row) {
-  if (typeof row === "string") {
-    return { schema: "default", name: row };
-  }
-  return {
-    schema: row.schema || "default",
-    name: row.name || row.table_name || "unknown",
-  };
+function setEditorQuery(query, queryName = "") {
+  document.getElementById("query-text").value = query;
+  if (queryName) document.getElementById("query-name").value = queryName;
 }
 
-async function loadTables(connectionId) {
-  const data = await apiRequest(`/api/connections/${connectionId}/tables`);
-  const list = document.getElementById("table-list");
-  list.innerHTML = "";
+function tableSelectTemplate(engine, schema, table) {
+  if (engine === "mysql") {
+    return `SELECT *\nFROM \`${schema}\`.\`${table}\`\nLIMIT 200;`;
+  }
 
-  if (!data.tables.length) {
+  if (engine === "mssql") {
+    return `SELECT TOP 200 *\nFROM [${schema}].[${table}];`;
+  }
+
+  return `SELECT *\nFROM "${schema}"."${table}"\nLIMIT 200;`;
+}
+
+function procedureInspectTemplate(engine, schema, procedure) {
+  if (engine === "mysql") {
+    return `SHOW CREATE PROCEDURE \`${schema}\`.\`${procedure}\`;`;
+  }
+
+  if (engine === "mssql") {
+    return `SELECT OBJECT_DEFINITION(OBJECT_ID('${schema}.${procedure}')) AS procedure_definition;`;
+  }
+
+  return `SELECT p.proname AS procedure_name, pg_get_functiondef(p.oid) AS definition\nFROM pg_proc p\nJOIN pg_namespace n ON n.oid = p.pronamespace\nWHERE n.nspname = '${schema}'\n  AND p.proname = '${procedure}';`;
+}
+
+function renderSchemaTree(schemas = []) {
+  const tree = document.getElementById("schema-tree");
+  tree.innerHTML = "";
+
+  if (!schemas.length) {
     const li = document.createElement("li");
     li.className = "muted";
-    li.textContent = "No tables found.";
-    list.appendChild(li);
+    li.textContent = "No schemas/tables/procedures found.";
+    tree.appendChild(li);
     return;
   }
 
-  data.tables.map(normalizeTableRow).forEach((table) => {
-    const li = document.createElement("li");
-    li.className = "table-item";
+  schemas.forEach((schemaNode) => {
+    const schemaLi = document.createElement("li");
+    schemaLi.className = "schema-node";
 
-    const schemaChip = document.createElement("span");
-    schemaChip.className = "schema-chip";
-    schemaChip.textContent = table.schema;
+    const schemaToggle = document.createElement("button");
+    schemaToggle.className = "tree-toggle";
+    schemaToggle.textContent = `▸ ${schemaNode.schema}`;
 
-    const name = document.createElement("span");
-    name.className = "table-name";
-    name.textContent = table.name;
+    const schemaBody = document.createElement("div");
+    schemaBody.className = "schema-body hidden";
 
-    li.append(schemaChip, name);
-    list.appendChild(li);
+    const tablesTitle = document.createElement("p");
+    tablesTitle.className = "tree-section-title";
+    tablesTitle.textContent = `Tables (${schemaNode.tables.length})`;
+    schemaBody.appendChild(tablesTitle);
+
+    const tablesUl = document.createElement("ul");
+    tablesUl.className = "tree-list";
+    schemaNode.tables.forEach((table) => {
+      const item = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.className = "tree-leaf";
+      btn.textContent = table.name;
+      btn.addEventListener("click", () => {
+        const sql = tableSelectTemplate(currentEngine, schemaNode.schema, table.name);
+        setEditorQuery(sql, `${schemaNode.schema}.${table.name}`);
+        showSuccess("SELECT query filled for table.");
+      });
+      item.appendChild(btn);
+      tablesUl.appendChild(item);
+    });
+    if (!schemaNode.tables.length) {
+      const item = document.createElement("li");
+      item.className = "muted";
+      item.textContent = "No tables";
+      tablesUl.appendChild(item);
+    }
+    schemaBody.appendChild(tablesUl);
+
+    const procsTitle = document.createElement("p");
+    procsTitle.className = "tree-section-title";
+    procsTitle.textContent = `Stored Procedures (${schemaNode.procedures.length})`;
+    schemaBody.appendChild(procsTitle);
+
+    const procsUl = document.createElement("ul");
+    procsUl.className = "tree-list";
+    schemaNode.procedures.forEach((proc) => {
+      const item = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.className = "tree-leaf";
+      btn.textContent = proc.name;
+      btn.addEventListener("click", () => {
+        const sql = procedureInspectTemplate(currentEngine, schemaNode.schema, proc.name);
+        setEditorQuery(sql, `${schemaNode.schema}.${proc.name}`);
+        showSuccess("Procedure query template filled.");
+      });
+      item.appendChild(btn);
+      procsUl.appendChild(item);
+    });
+    if (!schemaNode.procedures.length) {
+      const item = document.createElement("li");
+      item.className = "muted";
+      item.textContent = "No procedures";
+      procsUl.appendChild(item);
+    }
+    schemaBody.appendChild(procsUl);
+
+    schemaToggle.addEventListener("click", () => {
+      const hidden = schemaBody.classList.toggle("hidden");
+      schemaToggle.textContent = `${hidden ? "▸" : "▾"} ${schemaNode.schema}`;
+    });
+
+    schemaLi.append(schemaToggle, schemaBody);
+    tree.appendChild(schemaLi);
   });
+}
+
+async function loadSchemas(connectionId) {
+  const data = await apiRequest(`/api/connections/${connectionId}/tables`);
+  renderSchemaTree(data.schemas || []);
 }
 
 async function loadSavedQueries(connectionId) {
@@ -171,6 +255,7 @@ async function loadSavedQueries(connectionId) {
       return;
     }
 
+    currentEngine = String(current.engine || "postgresql").toLowerCase();
     document.getElementById("connection-chip").textContent = `${current.name} (${current.engine})`;
     document.getElementById("workspace-subtitle").textContent = `SQL Workspace • ${current.name}`;
 
@@ -216,7 +301,7 @@ async function loadSavedQueries(connectionId) {
       }
     });
 
-    await Promise.all([loadTables(connectionId), loadSavedQueries(connectionId)]);
+    await Promise.all([loadSchemas(connectionId), loadSavedQueries(connectionId)]);
   } catch (err) {
     showError(err.message);
   }

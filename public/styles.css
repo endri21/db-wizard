@@ -210,6 +210,8 @@ hr { border: none; border-top: 1px solid var(--line); margin: 1rem 0; }
   border-color: #1e293b;
 }
 .actions-row { display: flex; gap: .5rem; margin: .6rem 0; flex-wrap: wrap; }
+.actions-row button { width: auto; }
+
 .saved-query-list { list-style: none; padding: 0; }
 .saved-query-list li {
   border: 1px solid var(--line);
@@ -305,3 +307,31 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.error { background: #fff1f2; border-color: #fecdd3; color: #881337; }
 .toast.success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+
+
+.schema-tree { list-style: none; padding: 0; margin: 0; display: grid; gap: .4rem; }
+.schema-node { border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.tree-toggle {
+  width: 100%;
+  text-align: left;
+  background: #f8fafc;
+  color: #0f172a;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 10px 10px 0 0;
+  padding: .55rem .65rem;
+  font-weight: 600;
+}
+.schema-body { padding: .55rem .65rem .65rem; display: grid; gap: .35rem; }
+.tree-section-title { margin: .2rem 0; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; }
+.tree-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; }
+.tree-leaf {
+  text-align: left;
+  width: 100%;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: .35rem .45rem;
+}
+.tree-leaf:hover { background: #eff6ff; border-color: #bfdbfe; }

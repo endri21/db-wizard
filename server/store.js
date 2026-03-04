@@ -157,6 +157,44 @@ async function createConnection(payload) {
   return toPublicConnection(rows[0]);
 }
 
+
+async function updateConnection(connectionId, payload) {
+  const { rows } = await getPool().query(
+    `UPDATE db_connections
+     SET name = $1,
+         engine = $2,
+         connection_string = $3,
+         server = $4,
+         port = $5,
+         database_name = $6,
+         db_username = $7,
+         db_password = $8
+     WHERE id = $9 AND user_id = $10
+     RETURNING *`,
+    [
+      payload.name,
+      payload.engine,
+      encryptSecret(payload.connection_string || null),
+      payload.server || null,
+      payload.port || null,
+      payload.database_name || null,
+      payload.db_username || null,
+      encryptSecret(payload.db_password || null),
+      Number(connectionId),
+      Number(payload.user_id),
+    ]
+  );
+  return rows[0] ? toPublicConnection(rows[0]) : null;
+}
+
+async function deleteConnection(connectionId, userId) {
+  const result = await getPool().query(
+    "DELETE FROM db_connections WHERE id = $1 AND user_id = $2",
+    [Number(connectionId), Number(userId)]
+  );
+  return result.rowCount > 0;
+}
+
 async function listSavedQueries(userId, connectionId) {
   const { rows } = await getPool().query(
     `SELECT * FROM saved_queries
@@ -211,6 +249,8 @@ module.exports = {
   listConnectionsByUserId,
   findConnectionByIdAndUser,
   createConnection,
+  updateConnection,
+  deleteConnection,
   listSavedQueries,
   findSavedQuery,
   createSavedQuery,
