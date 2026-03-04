@@ -26,23 +26,31 @@
         <div class="portal-section-header section-actions">
           <div>
             <h2>Workspace Connections</h2>
-            <p class="muted">Table view with status, actions, and quick navigation.</p>
+            <p class="muted">Switch between card and table views.</p>
           </div>
-          <button id="open-connection-modal-btn">+ Add Connection</button>
+          <div class="section-tools">
+            <div class="view-toggle" role="group" aria-label="Change view">
+              <button id="view-card-btn" class="secondary" type="button" title="Card view">▦</button>
+              <button id="view-table-btn" class="secondary" type="button" title="Table view">☷</button>
+            </div>
+            <button id="open-connection-modal-btn" class="btn-small">+ Add</button>
+          </div>
         </div>
 
-        <div class="table-scroll">
+        <ul id="connection-card-list" class="resource-grid"></ul>
+
+        <div id="connection-table-wrap" class="table-scroll hidden">
           <table id="workspace-table" class="workspace-table">
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Engine</th>
-                <th>Host / DB</th>
+                <th>Host</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="connection-list"></tbody>
+            <tbody id="connection-table-body"></tbody>
           </table>
         </div>
       </main>
@@ -76,6 +84,22 @@
             <button id="connection-submit-btn" type="submit">Save Connection</button>
           </div>
         </form>
+      </div>
+    </div>
+
+
+    <div id="delete-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h2 id="delete-confirm-title">Delete Workspace</h2>
+          <button id="close-delete-modal-btn" class="icon-close" aria-label="Close">✕</button>
+        </div>
+        <p class="warning-text">⚠️ This action cannot be undone.</p>
+        <p id="delete-confirm-message" class="muted"></p>
+        <div class="actions-row">
+          <button id="cancel-delete-btn" type="button" class="secondary">Cancel</button>
+          <button id="confirm-delete-btn" type="button" class="danger">Delete Workspace</button>
+        </div>
       </div>
     </div>
 

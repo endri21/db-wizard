@@ -361,12 +361,6 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   padding: 0;
 }
 .icon-close:hover { background: #f8fafc; }
-.back-dashboard-btn {
-  width: auto;
-  min-width: 170px;
-  font-weight: 600;
-}
-
 
 .section-actions {
   display: flex;
@@ -392,3 +386,33 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .path-back:hover { text-decoration: underline; }
 .path-sep { color: #94a3b8; }
 .path-current { color: #475569; font-weight: 600; }
+
+
+.section-tools { display: flex; align-items: center; gap: .6rem; }
+.btn-small { width: auto; padding: .45rem .8rem; min-width: 88px; }
+.view-toggle { display: inline-flex; gap: .35rem; }
+.view-toggle button { width: 38px; min-width: 38px; padding: .35rem; }
+.view-toggle .active { background: #dbeafe; color: #1e3a8a; border-color: #bfdbfe; }
+
+.icon-btn {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: .95rem;
+}
+
+.workspace-table td:nth-child(1) { min-width: 180px; }
+.workspace-table td:nth-child(5) { min-width: 130px; }
+
+.confirm-modal { max-width: 560px; }
+.warning-text {
+  color: #9a3412;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+  border-radius: 8px;
+  padding: .55rem .65rem;
+  margin: .2rem 0 .6rem;
+  font-weight: 600;
+}
