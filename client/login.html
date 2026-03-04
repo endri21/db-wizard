@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Sign In</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="auth-shell auth-shell-split">
+      <section class="auth-brand-panel panel">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>DB Wizard</h1>
+            <p class="muted">Database Portal for modern teams</p>
+          </div>
+        </div>
+        <h2>Operate your databases from one control plane</h2>
+        <ul class="feature-list">
+          <li>Manage PostgreSQL, MySQL, and MSSQL connections.</li>
+          <li>Run read-only SQL in a dedicated secure workspace.</li>
+          <li>Save and reuse team queries with versioned clarity.</li>
+        </ul>
+      </section>
+
+      <section class="auth-form-panel panel">
+        <h2>Sign in to your workspace</h2>
+        <p class="muted">Use your local account or organization SSO.</p>
+
+        <p id="error" class="error hidden"></p>
+
+        <form id="login-form">
+          <label>Username<input name="username" required /></label>
+          <label>Password<input type="password" name="password" required /></label>
+          <button type="submit">Sign In</button>
+        </form>
+
+        <div class="auth-links">
+          <span class="muted">New here?</span>
+          <a href="/register">Create account</a>
+        </div>
+
+        <hr />
+
+        <div>
+          <h3>Organization Login</h3>
+          <div id="oauth-buttons" class="oauth-buttons"></div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/login.js"></script>
+  </body>
+</html>
