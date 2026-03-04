@@ -47,6 +47,13 @@ npm start
 
 Open `http://localhost:3000`.
 
+## Database init quick note
+
+If you run `npm run db:init` without setting env vars, the app now falls back to:
+
+`postgresql://postgres:postgres@localhost:5432/db_wizard`
+
+You can still override with `APP_DATABASE_URL` or `DATABASE_URL`.
 
 ## Database initialization and seed
 
