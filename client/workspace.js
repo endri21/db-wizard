@@ -1,6 +1,8 @@
 let editingSavedQueryId = null;
 let currentEngine = "postgresql";
 let activeContextMenu = null;
+let schemaTreeCache = [];
+let currentConnection = null;
 
 function connectionIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -106,6 +108,48 @@ function closeContextMenu() {
   }
 }
 
+function createNodeLabel(icon, text, expanded = false) {
+  const wrap = document.createElement("span");
+  wrap.className = "tree-label";
+
+  const caret = document.createElement("span");
+  caret.className = "tree-caret";
+  caret.textContent = expanded ? "▾" : "▸";
+
+  const iconEl = document.createElement("span");
+  iconEl.className = "tree-icon";
+  iconEl.textContent = icon;
+
+  const textEl = document.createElement("span");
+  textEl.textContent = text;
+
+  wrap.append(caret, iconEl, textEl);
+  return { wrap, caret };
+}
+
+function showDatabaseContextMenu({ x, y }) {
+  closeContextMenu();
+
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "context-item";
+  btn.textContent = "Choose tables for diagram";
+  btn.addEventListener("click", () => {
+    openDiagramModal();
+    closeContextMenu();
+  });
+
+  menu.appendChild(btn);
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  document.body.appendChild(menu);
+  activeContextMenu = menu;
+}
+
 function showTableContextMenu({ x, y, schema, table }) {
   closeContextMenu();
 
@@ -147,6 +191,129 @@ function showTableContextMenu({ x, y, schema, table }) {
   activeContextMenu = menu;
 }
 
+
+function flattenTables(schemas = []) {
+  return schemas.flatMap((schemaNode) =>
+    (schemaNode.tables || []).map((table) => ({
+      key: `${schemaNode.schema}.${table.name}`,
+      schema: schemaNode.schema,
+      name: table.name,
+    }))
+  );
+}
+
+function openDiagramModal() {
+  const modal = document.getElementById("diagram-modal");
+  const picker = document.getElementById("diagram-table-picker");
+  picker.innerHTML = "";
+
+  const tables = flattenTables(schemaTreeCache);
+  if (!tables.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No tables available.";
+    picker.appendChild(empty);
+  } else {
+    tables.forEach((table) => {
+      const label = document.createElement("label");
+      label.className = "table-picker-item";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = table.key;
+
+      const text = document.createElement("span");
+      text.textContent = table.key;
+
+      label.append(cb, text);
+      picker.appendChild(label);
+    });
+  }
+
+  modal.classList.remove("hidden");
+}
+
+function closeDiagramModal() {
+  document.getElementById("diagram-modal").classList.add("hidden");
+}
+
+function renderRelationshipDiagram(relationships, selectedTables) {
+  const canvas = document.getElementById("diagram-canvas");
+  const count = document.getElementById("diagram-count");
+  canvas.innerHTML = "";
+
+  if (!selectedTables.length) {
+    canvas.innerHTML = '<p class="muted">Select at least one table to generate the diagram.</p>';
+    count.textContent = "No table selected.";
+    return;
+  }
+
+  const selectedSet = new Set(selectedTables.map((t) => t.toLowerCase()));
+  const tableCards = document.createElement("div");
+  tableCards.className = "diagram-table-grid";
+
+  selectedTables.forEach((tableName) => {
+    const card = document.createElement("div");
+    card.className = "diagram-table-card";
+    const title = document.createElement("strong");
+    title.textContent = tableName;
+
+    const relatedCount = relationships.filter((rel) => {
+      const from = `${rel.from_schema}.${rel.from_table}`.toLowerCase();
+      const to = `${rel.to_schema}.${rel.to_table}`.toLowerCase();
+      return from === tableName.toLowerCase() || to === tableName.toLowerCase();
+    }).length;
+
+    const meta = document.createElement("p");
+    meta.className = "muted";
+    meta.textContent = `${relatedCount} relationship(s)`;
+    card.append(title, meta);
+    tableCards.appendChild(card);
+  });
+
+  const relList = document.createElement("div");
+  relList.className = "relation-list";
+  const relevant = relationships.filter((rel) => {
+    const from = `${rel.from_schema}.${rel.from_table}`.toLowerCase();
+    const to = `${rel.to_schema}.${rel.to_table}`.toLowerCase();
+    return selectedSet.has(from) || selectedSet.has(to);
+  });
+
+  if (!relevant.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted";
+    empty.textContent = "No foreign-key relationships found for the selected tables.";
+    relList.appendChild(empty);
+  } else {
+    relevant.forEach((rel) => {
+      const row = document.createElement("div");
+      row.className = "relation-row";
+      row.textContent = `${rel.from_schema}.${rel.from_table}.${rel.from_column}  →  ${rel.to_schema}.${rel.to_table}.${rel.to_column}`;
+      relList.appendChild(row);
+    });
+  }
+
+  canvas.append(tableCards, relList);
+  count.textContent = `${selectedTables.length} table(s), ${relevant.length} relation(s)`;
+}
+
+async function generateDiagram(connectionId) {
+  const checked = Array.from(document.querySelectorAll('#diagram-table-picker input[type="checkbox"]:checked')).map(
+    (el) => el.value
+  );
+  try {
+    const data = await apiRequest(`/api/connections/${connectionId}/relationships`, {
+      method: "POST",
+      body: JSON.stringify({ tables: checked }),
+    });
+    renderRelationshipDiagram(data.relationships || [], checked);
+    closeDiagramModal();
+    showSuccess("Relationship diagram generated.");
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
 function renderSchemaTree(connection, schemas = []) {
   const tree = document.getElementById("schema-tree");
   tree.innerHTML = "";
@@ -156,14 +323,20 @@ function renderSchemaTree(connection, schemas = []) {
 
   const dbToggle = document.createElement("button");
   dbToggle.className = "tree-toggle db-root-toggle";
-  dbToggle.textContent = `▾ ${connection.name} (${connection.engine})`;
+  const dbLabel = createNodeLabel("🗄️", `${connection.name} (${connection.engine})`, true);
+  dbToggle.appendChild(dbLabel.wrap);
 
   const dbBody = document.createElement("div");
   dbBody.className = "db-root-body";
 
   dbToggle.addEventListener("click", () => {
     const hidden = dbBody.classList.toggle("hidden");
-    dbToggle.textContent = `${hidden ? "▸" : "▾"} ${connection.name} (${connection.engine})`;
+    dbLabel.caret.textContent = hidden ? "▸" : "▾";
+  });
+
+  dbToggle.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    showDatabaseContextMenu({ x: e.clientX, y: e.clientY });
   });
 
   tree.append(dbRoot);
@@ -182,15 +355,16 @@ function renderSchemaTree(connection, schemas = []) {
     schemaLi.className = "schema-node";
 
     const schemaToggle = document.createElement("button");
-    schemaToggle.className = "tree-toggle";
-    schemaToggle.textContent = `▸ ${schemaNode.schema}`;
+    schemaToggle.className = "tree-toggle schema-toggle";
+    const schemaLabel = createNodeLabel("🗂️", schemaNode.schema);
+    schemaToggle.appendChild(schemaLabel.wrap);
 
     const schemaBody = document.createElement("div");
     schemaBody.className = "schema-body hidden";
 
     schemaToggle.addEventListener("click", () => {
       const hidden = schemaBody.classList.toggle("hidden");
-      schemaToggle.textContent = `${hidden ? "▸" : "▾"} ${schemaNode.schema}`;
+      schemaLabel.caret.textContent = hidden ? "▸" : "▾";
       if (!hidden) {
         schemaLi.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
@@ -211,7 +385,7 @@ function renderSchemaTree(connection, schemas = []) {
       const item = document.createElement("li");
       const btn = document.createElement("button");
       btn.className = "tree-leaf";
-      btn.textContent = table.name;
+      btn.innerHTML = `<span class="tree-icon">📄</span><span>${table.name}</span>`;
       btn.addEventListener("click", () => {
         const sql = tableSelectTemplate(currentEngine, schemaNode.schema, table.name);
         setEditorQuery(sql, `${schemaNode.schema}.${table.name}`);
@@ -243,7 +417,7 @@ function renderSchemaTree(connection, schemas = []) {
       const item = document.createElement("li");
       const btn = document.createElement("button");
       btn.className = "tree-leaf";
-      btn.textContent = proc.name;
+      btn.innerHTML = `<span class="tree-icon">⚙️</span><span>${proc.name}</span>`;
       btn.addEventListener("click", () => {
         const sql = procedureInspectTemplate(currentEngine, schemaNode.schema, proc.name);
         setEditorQuery(sql, `${schemaNode.schema}.${proc.name}`);
@@ -267,7 +441,8 @@ function renderSchemaTree(connection, schemas = []) {
 
 async function loadSchemas(connection) {
   const data = await apiRequest(`/api/connections/${connection.id}/tables`);
-  renderSchemaTree(connection, data.schemas || []);
+  schemaTreeCache = data.schemas || [];
+  renderSchemaTree(connection, schemaTreeCache);
 }
 
 async function loadSavedQueries(connectionId) {
@@ -373,6 +548,7 @@ async function loadSavedQueries(connectionId) {
       return;
     }
 
+    currentConnection = current;
     currentEngine = String(current.engine || "postgresql").toLowerCase();
     document.getElementById("connection-chip").textContent = `${current.name} (${current.engine})`;
     document.getElementById("workspace-subtitle").textContent = `SQL Workspace • ${current.name}`;
@@ -390,6 +566,13 @@ async function loadSavedQueries(connectionId) {
         showError(err.message);
       }
     });
+
+    document.getElementById("diagram-close-btn").addEventListener("click", closeDiagramModal);
+    document.getElementById("diagram-cancel-btn").addEventListener("click", closeDiagramModal);
+    document.getElementById("diagram-modal").addEventListener("click", (e) => {
+      if (e.target.id === "diagram-modal") closeDiagramModal();
+    });
+    document.getElementById("diagram-generate-btn").addEventListener("click", () => generateDiagram(connectionId));
 
     document.getElementById("save-query-btn").addEventListener("click", async () => {
       try {

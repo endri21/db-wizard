@@ -272,6 +272,109 @@ async function listTables(conn) {
   }
 }
 
+
+async function listRelationships(conn, selectedTables = []) {
+  const engine = normalizeEngine(conn.engine);
+  const cfg = buildConfig(conn);
+  const selectedSet = new Set((selectedTables || []).map((t) => String(t).toLowerCase()));
+  const includeRel = (row) => {
+    if (!selectedSet.size) return true;
+    const from = `${row.from_schema}.${row.from_table}`.toLowerCase();
+    const to = `${row.to_schema}.${row.to_table}`.toLowerCase();
+    return selectedSet.has(from) || selectedSet.has(to);
+  };
+
+  try {
+    if (engine === "postgresql") {
+      const rows = await withPgClient(
+        cfg,
+        async (client) => {
+          const result = await client.query(`
+            SELECT tc.constraint_name,
+                   tc.table_schema AS from_schema,
+                   tc.table_name AS from_table,
+                   kcu.column_name AS from_column,
+                   ccu.table_schema AS to_schema,
+                   ccu.table_name AS to_table,
+                   ccu.column_name AS to_column
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage ccu
+              ON ccu.constraint_name = tc.constraint_name
+             AND ccu.constraint_schema = tc.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+            ORDER BY from_schema, from_table, constraint_name
+          `);
+          return result.rows;
+        },
+        { retryOnNoEncryption: true }
+      );
+      return rows.filter(includeRel);
+    }
+
+    if (engine === "mysql") {
+      const connection = cfg.connectionString
+        ? await mysql.createConnection(cfg.connectionString)
+        : await mysql.createConnection(cfg);
+      const [rows] = await connection.query(`
+        SELECT kcu.CONSTRAINT_NAME AS constraint_name,
+               kcu.TABLE_SCHEMA AS from_schema,
+               kcu.TABLE_NAME AS from_table,
+               kcu.COLUMN_NAME AS from_column,
+               kcu.REFERENCED_TABLE_SCHEMA AS to_schema,
+               kcu.REFERENCED_TABLE_NAME AS to_table,
+               kcu.REFERENCED_COLUMN_NAME AS to_column
+        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+        WHERE kcu.REFERENCED_TABLE_NAME IS NOT NULL
+        ORDER BY from_schema, from_table, constraint_name
+      `);
+      await connection.end();
+      return rows.filter(includeRel);
+    }
+
+    if (engine === "mssql") {
+      const pool = await sql.connect(
+        cfg.connectionString
+          ? cfg.connectionString
+          : {
+              server: cfg.host,
+              port: cfg.port,
+              database: cfg.database,
+              user: cfg.user,
+              password: cfg.password,
+              options: { encrypt: false, trustServerCertificate: true },
+            }
+      );
+      const result = await pool.request().query(`
+        SELECT fk.name AS constraint_name,
+               sch1.name AS from_schema,
+               t1.name AS from_table,
+               c1.name AS from_column,
+               sch2.name AS to_schema,
+               t2.name AS to_table,
+               c2.name AS to_column
+        FROM sys.foreign_keys fk
+        JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+        JOIN sys.tables t1 ON fkc.parent_object_id = t1.object_id
+        JOIN sys.schemas sch1 ON t1.schema_id = sch1.schema_id
+        JOIN sys.columns c1 ON c1.object_id = t1.object_id AND c1.column_id = fkc.parent_column_id
+        JOIN sys.tables t2 ON fkc.referenced_object_id = t2.object_id
+        JOIN sys.schemas sch2 ON t2.schema_id = sch2.schema_id
+        JOIN sys.columns c2 ON c2.object_id = t2.object_id AND c2.column_id = fkc.referenced_column_id
+        ORDER BY from_schema, from_table, constraint_name
+      `);
+      await pool.close();
+      return result.recordset.filter(includeRel);
+    }
+
+    throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
+  } catch (err) {
+    rethrowFriendlyConnectionError(err, cfg);
+  }
+}
+
 async function runQuery(conn, query) {
   ensureReadOnlyQuery(query);
   const engine = normalizeEngine(conn.engine);
@@ -330,6 +433,7 @@ async function runQuery(conn, query) {
 
 module.exports = {
   listTables,
+  listRelationships,
   runQuery,
   // exported for tests
   shouldRetryPgWithSsl,

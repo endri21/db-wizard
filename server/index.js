@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const cors = require("cors");
 
 const store = require("./store");
-const { listTables, runQuery } = require("./dbClients");
+const { listTables, listRelationships, runQuery } = require("./dbClients");
 const { ensureReadOnlyQuery } = require("./queryGuard");
 const { configurePassport, passport } = require("./auth");
 
@@ -246,6 +246,20 @@ app.get("/api/connections/:id/tables", requireAuth, async (req, res) => {
   try {
     const schemas = await listTables(conn);
     res.json({ schemas });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+
+app.post("/api/connections/:id/relationships", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  try {
+    const selectedTables = Array.isArray(req.body?.tables) ? req.body.tables : [];
+    const relationships = await listRelationships(conn, selectedTables);
+    res.json({ relationships });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

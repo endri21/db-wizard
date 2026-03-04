@@ -32,6 +32,7 @@
         <aside class="panel left-rail">
           <h3>Schemas & Tables</h3>
           <ul id="schema-tree" class="schema-tree"></ul>
+          <p class="muted tree-tip">Tip: right-click database or table nodes for quick actions.</p>
 
           <h3>Saved Queries</h3>
           <ul id="saved-query-list" class="saved-query-list"></ul>
@@ -62,8 +63,33 @@
               </table>
             </div>
           </div>
+
+          <div class="diagram-wrap panel-sub">
+            <div class="diagram-header">
+              <h4>Table Relationship Diagram</h4>
+              <span id="diagram-count" class="muted">No diagram generated yet.</span>
+            </div>
+            <div id="diagram-canvas" class="diagram-canvas">
+              <p class="muted">Right-click the database node in the tree and choose <strong>Choose tables for diagram</strong>.</p>
+            </div>
+          </div>
         </main>
       </section>
+
+      <div id="diagram-modal" class="modal hidden">
+        <div class="panel modal-card confirm-modal">
+          <div class="modal-header">
+            <h3>Choose Tables for Diagram</h3>
+            <button id="diagram-close-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+          </div>
+          <p class="muted">Select one or more tables to visualize relationships.</p>
+          <div id="diagram-table-picker" class="table-picker"></div>
+          <div class="actions-row">
+            <button id="diagram-generate-btn" type="button">Generate Diagram</button>
+            <button id="diagram-cancel-btn" class="secondary" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="/client/shared.js"></script>
