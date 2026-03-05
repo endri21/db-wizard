@@ -132,6 +132,59 @@ hr { border: none; border-top: 1px solid var(--line); margin: 1rem 0; }
 .feature-list.compact { font-size: .9rem; }
 .oauth-buttons { display: flex; gap: .55rem; flex-wrap: wrap; }
 
+
+.app-frame {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.side-nav {
+  background: linear-gradient(180deg, #1d4ed8 0%, #2563eb 45%, #0ea5e9 100%);
+  color: #e0f2fe;
+  padding: 1rem .85rem;
+  border-right: 1px solid rgba(255,255,255,.2);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+}
+.side-nav-brand {
+  font-weight: 800;
+  letter-spacing: .02em;
+  margin-bottom: 1rem;
+  padding: .65rem .7rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,.14);
+}
+.side-nav-links {
+  display: grid;
+  gap: .35rem;
+}
+.side-link {
+  display: block;
+  text-decoration: none;
+  color: #e0f2fe;
+  padding: .55rem .65rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-weight: 600;
+}
+.side-link:hover {
+  background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.2);
+}
+.side-link.active {
+  background: rgba(255,255,255,.24);
+  border-color: rgba(255,255,255,.35);
+}
+
+.app-frame .app-shell {
+  max-width: none;
+  width: 100%;
+}
+
+
 .app-shell { max-width: 1450px; margin: 0 auto; padding: 1rem; }
 .portal-shell { padding-top: 1.1rem; }
 .app-header {
@@ -279,6 +332,8 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 }
 
 @media (max-width: 1080px) {
+  .app-frame { grid-template-columns: 1fr; }
+  .side-nav { position: static; height: auto; }
   .portal-grid, .workspace-enterprise { grid-template-columns: 1fr; }
   .left-rail { max-height: none; }
 }
@@ -403,22 +458,20 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 }
 
 .admin-menu-panel {
-  margin-bottom: .85rem;
+  margin: .9rem 0 .25rem;
   padding: .65rem;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(255,255,255,.28);
   border-radius: 12px;
-  background: #f8fbff;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
+  background: rgba(255,255,255,.14);
+  display: grid;
+  gap: .45rem;
 }
 .admin-menu-title {
   margin: 0;
   font-weight: 700;
-  color: #334155;
+  color: #e0f2fe;
 }
-.admin-menu-panel .button { width: auto; min-width: 92px; }
+.admin-menu-panel .button { width: 100%; min-width: 0; background: rgba(255,255,255,.9); color: #1e3a8a; border-color: rgba(255,255,255,.85); }
 
 .workspace-table td, .workspace-table th { vertical-align: middle; }
 .status-wrap { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; }

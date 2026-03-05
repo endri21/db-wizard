@@ -7,7 +7,22 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <div class="app-frame">
+      <aside class="side-nav">
+        <div class="side-nav-brand">DB Wizard</div>
+        <nav class="side-nav-links">
+          <a class="side-link" href="/dashboard">Dashboard</a>
+          <a class="side-link active" href="#">SQL Workspace</a>
+          <a class="side-link" href="/admin">Admin Console</a>
+        </nav>
+        <div id="admin-menu-panel" class="admin-menu-panel hidden">
+          <p class="muted admin-menu-title">Admin Menu</p>
+          <a id="users-link" href="/users" class="button secondary">Users</a>
+          <a id="roles-link" href="/roles" class="button secondary">Roles</a>
+        </div>
+      </aside>
+
+      <div class="app-shell">
       <header class="app-header">
         <div class="brand-wrap">
           <div class="brand-badge">DB</div>
@@ -30,12 +45,6 @@
 
       <section class="workspace-enterprise">
         <aside class="panel left-rail">
-          <div id="admin-menu-panel" class="admin-menu-panel hidden">
-            <p class="muted admin-menu-title">Admin Menu</p>
-            <a id="users-link" href="/users" class="button secondary">Users</a>
-            <a id="roles-link" href="/roles" class="button secondary">Roles</a>
-          </div>
-
           <h3>Schemas & Tables</h3>
           <ul id="schema-tree" class="schema-tree"></ul>
           <p class="muted tree-tip">Tip: right-click database or table nodes for quick actions.</p>
@@ -113,6 +122,7 @@
             <p class="muted">Generate a diagram from the database context menu.</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
 

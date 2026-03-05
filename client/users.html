@@ -7,7 +7,18 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-shell portal-shell">
+    <div class="app-frame">
+      <aside class="side-nav">
+        <div class="side-nav-brand">DB Wizard</div>
+        <nav class="side-nav-links">
+          <a class="side-link" href="/dashboard">Dashboard</a>
+          <a class="side-link" href="/admin">Admin Console</a>
+          <a class="side-link active" href="/users">Users</a>
+          <a class="side-link" href="/roles">Roles</a>
+        </nav>
+      </aside>
+
+      <div class="app-shell portal-shell">
       <header class="app-header portal-header">
         <div class="brand-wrap">
           <div class="brand-badge">DB</div>
@@ -17,8 +28,6 @@
           </div>
         </div>
         <div class="header-actions">
-          <a href="/dashboard" class="button secondary">Back</a>
-          <a href="/roles" class="button secondary">Roles</a>
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
@@ -37,6 +46,7 @@
           </div>
         </div>
       </main>
+      </div>
     </div>
 
     <script src="/client/shared.js"></script>
