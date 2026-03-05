@@ -90,8 +90,15 @@ app.get("/workspace/:id", requireAuthPage, (_req, res) => {
 });
 
 app.get("/admin", requireAuthPage, (req, res) => {
-  if (!isAdminUser(req.user)) return res.redirect("/dashboard");
-  return res.sendFile(path.join(__dirname, "..", "client", "admin.html"));
+  return res.redirect("/users");
+});
+
+app.get("/users", requireAuthPage, (_req, res) => {
+  return res.sendFile(path.join(__dirname, "..", "client", "users.html"));
+});
+
+app.get("/roles", requireAuthPage, (_req, res) => {
+  return res.sendFile(path.join(__dirname, "..", "client", "roles.html"));
 });
 
 app.get("/api/auth/providers", (_req, res) => {
@@ -203,12 +210,17 @@ app.get("/api/admin/users", requireAdmin, async (_req, res) => {
 });
 
 app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
-  const role = String(req.body.role || "").toLowerCase();
-  const max_connections = Number(req.body.max_connections);
+  const existing = await store.findUserById(req.params.id);
+  if (!existing) return res.status(404).json({ error: "User not found." });
 
-  if (!["admin", "user"].includes(role)) {
-    return res.status(400).json({ error: "Role must be 'admin' or 'user'." });
-  }
+  const roleInput = req.body.role;
+  const maxInput = req.body.max_connections;
+
+  const role = roleInput == null ? String(existing.role || "user").toLowerCase() : String(roleInput).toLowerCase();
+  const max_connections =
+    maxInput == null ? Number(existing.max_connections || 5) : Number(maxInput);
+
+  if (!["admin", "user"].includes(role)) return res.status(400).json({ error: "Role must be 'admin' or 'user'." });
   if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
     return res.status(400).json({ error: "max_connections must be between 1 and 200." });
   }

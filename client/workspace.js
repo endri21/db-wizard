@@ -765,11 +765,13 @@ async function loadSavedQueries(connectionId) {
     if (!user) return;
     document.getElementById("user-chip").textContent = `Signed in: ${user.username}`;
     if (String(user.role || "").toLowerCase() === "admin") {
-      document.getElementById("admin-link").classList.remove("hidden");
+      document.getElementById("users-link").classList.remove("hidden");
+      document.getElementById("roles-link").classList.remove("hidden");
     } else {
       try {
         await apiRequest("/api/admin/users");
-        document.getElementById("admin-link").classList.remove("hidden");
+        document.getElementById("users-link").classList.remove("hidden");
+        document.getElementById("roles-link").classList.remove("hidden");
       } catch {
         // not admin
       }
