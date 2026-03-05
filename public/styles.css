@@ -402,6 +402,24 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   gap: .8rem;
 }
 
+.admin-menu-panel {
+  margin-bottom: .85rem;
+  padding: .65rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f8fbff;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.admin-menu-title {
+  margin: 0;
+  font-weight: 700;
+  color: #334155;
+}
+.admin-menu-panel .button { width: auto; min-width: 92px; }
+
 .workspace-table td, .workspace-table th { vertical-align: middle; }
 .status-wrap { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; }
 .status-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }

@@ -17,8 +17,6 @@
           </div>
         </div>
         <div class="header-actions">
-          <a id="users-link" href="/users" class="button secondary hidden">Users</a>
-          <a id="roles-link" href="/roles" class="button secondary hidden">Roles</a>
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
@@ -32,6 +30,12 @@
 
       <section class="workspace-enterprise">
         <aside class="panel left-rail">
+          <div id="admin-menu-panel" class="admin-menu-panel hidden">
+            <p class="muted admin-menu-title">Admin Menu</p>
+            <a id="users-link" href="/users" class="button secondary">Users</a>
+            <a id="roles-link" href="/roles" class="button secondary">Roles</a>
+          </div>
+
           <h3>Schemas & Tables</h3>
           <ul id="schema-tree" class="schema-tree"></ul>
           <p class="muted tree-tip">Tip: right-click database or table nodes for quick actions.</p>

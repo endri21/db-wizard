@@ -17,14 +17,18 @@
           </div>
         </div>
         <div class="header-actions">
-          <a id="users-link" href="/users" class="button secondary hidden">Users</a>
-          <a id="roles-link" href="/roles" class="button secondary hidden">Roles</a>
           <span id="user-chip" class="chip"></span>
           <button id="logout-btn" class="secondary">Logout</button>
         </div>
       </header>
 
       <main class="panel portal-content portal-content-full">
+        <aside id="admin-menu-panel" class="admin-menu-panel hidden">
+          <p class="muted admin-menu-title">Admin Menu</p>
+          <a id="users-link" href="/users" class="button secondary">Users</a>
+          <a id="roles-link" href="/roles" class="button secondary">Roles</a>
+        </aside>
+
         <div class="portal-section-header section-actions">
           <div>
             <h2>Workspace Connections</h2>
