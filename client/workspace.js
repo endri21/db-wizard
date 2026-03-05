@@ -4,6 +4,7 @@ let activeContextMenu = null;
 let schemaTreeCache = [];
 let currentConnection = null;
 let latestDiagramPayload = null;
+let activateWorkspaceTab = null;
 
 function connectionIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -179,7 +180,6 @@ function showTableContextMenu({ x, y, schema, table }) {
     btn.textContent = opt.label;
     btn.addEventListener("click", () => {
       opt.action();
-      showSuccess(`${opt.label} filled.`);
       closeContextMenu();
     });
     menu.appendChild(btn);
@@ -545,7 +545,6 @@ function renderSchemaTree(connection, schemas = []) {
 
       const sql = schemaStructureTemplate(currentEngine, schemaNode.schema);
       setEditorQuery(sql, `${schemaNode.schema}.schema`);
-      showSuccess("Schema structure query filled.");
     });
 
     const tablesWrap = document.createElement("div");
@@ -570,7 +569,6 @@ function renderSchemaTree(connection, schemas = []) {
       btn.addEventListener("click", () => {
         const sql = tableSelectTemplate(currentEngine, schemaNode.schema, table.name);
         setEditorQuery(sql, `${schemaNode.schema}.${table.name}`);
-        showSuccess("SELECT query filled for table.");
       });
       btn.addEventListener("contextmenu", (e) => {
         e.preventDefault();
@@ -610,7 +608,6 @@ function renderSchemaTree(connection, schemas = []) {
       btn.addEventListener("click", () => {
         const sql = procedureInspectTemplate(currentEngine, schemaNode.schema, proc.name);
         setEditorQuery(sql, `${schemaNode.schema}.${proc.name}`);
-        showSuccess("Procedure query template filled.");
       });
       item.appendChild(btn);
       procsUl.appendChild(item);
@@ -656,7 +653,7 @@ function setupWorkspaceTabs() {
   const sqlPane = document.getElementById("pane-sql");
   const savedPane = document.getElementById("pane-saved");
 
-  const activate = (which) => {
+  activateWorkspaceTab = (which) => {
     const sqlActive = which === "sql";
     sqlBtn.classList.toggle("active", sqlActive);
     savedBtn.classList.toggle("active", !sqlActive);
@@ -664,8 +661,8 @@ function setupWorkspaceTabs() {
     savedPane.classList.toggle("hidden", sqlActive);
   };
 
-  sqlBtn.addEventListener("click", () => activate("sql"));
-  savedBtn.addEventListener("click", () => activate("saved"));
+  sqlBtn.addEventListener("click", () => activateWorkspaceTab("sql"));
+  savedBtn.addEventListener("click", () => activateWorkspaceTab("saved"));
 }
 
 async function loadSchemas(connection) {
@@ -718,6 +715,7 @@ async function loadSavedQueries(connectionId) {
           method: "POST",
         });
         renderResult(result);
+        if (activateWorkspaceTab) activateWorkspaceTab("sql");
         showSuccess("Saved query executed.");
       } catch (err) {
         showError(err.message);

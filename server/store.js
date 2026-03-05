@@ -14,9 +14,7 @@ function resolveConnectionString() {
 function resolveSslConfig() {
   const sslMode = String(process.env.APP_DATABASE_SSLMODE || "").toLowerCase();
   const sslEnabled = ["require", "verify-ca", "verify-full", "true", "1"].includes(sslMode);
-  if (!sslEnabled) {
-    return undefined;
-  }
+  if (!sslEnabled) return undefined;
 
   const rejectUnauthorized =
     String(process.env.APP_DATABASE_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true";
@@ -68,6 +66,11 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS roles (
+      name TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS db_connections (
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -94,6 +97,9 @@ async function init() {
 
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS max_connections INTEGER NOT NULL DEFAULT 5;
+
+    INSERT INTO roles (name) VALUES ('admin') ON CONFLICT (name) DO NOTHING;
+    INSERT INTO roles (name) VALUES ('user') ON CONFLICT (name) DO NOTHING;
   `);
 }
 
@@ -112,14 +118,54 @@ async function findUserByProvider(provider, providerId) {
   return rows[0] || null;
 }
 
-async function createUser({ username, password_hash = null, provider = "local", provider_id = null }) {
+async function createUser({ username, password_hash = null, provider = "local", provider_id = null, role = "user", max_connections = 5 }) {
   const { rows } = await getPool().query(
     `INSERT INTO users (username, password_hash, provider, provider_id, role, max_connections)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [username, password_hash, provider, provider_id, "user", 5]
+    [username, password_hash, provider, provider_id, String(role || "user").toLowerCase(), Number(max_connections)]
   );
   return rows[0];
+}
+
+async function listRoles() {
+  const { rows } = await getPool().query(
+    `SELECT r.name, r.created_at,
+            COUNT(u.id)::int AS user_count
+     FROM roles r
+     LEFT JOIN users u ON lower(u.role) = lower(r.name)
+     GROUP BY r.name, r.created_at
+     ORDER BY r.name ASC`
+  );
+  return rows;
+}
+
+async function roleExists(name) {
+  const { rows } = await getPool().query("SELECT 1 FROM roles WHERE lower(name)=lower($1) LIMIT 1", [name]);
+  return Boolean(rows[0]);
+}
+
+async function createRole(name) {
+  const normalized = String(name || "").trim().toLowerCase();
+  const { rows } = await getPool().query(
+    `INSERT INTO roles (name) VALUES ($1)
+     ON CONFLICT (name) DO NOTHING
+     RETURNING name, created_at`,
+    [normalized]
+  );
+  return rows[0] || null;
+}
+
+async function deleteRole(name) {
+  const normalized = String(name || "").trim().toLowerCase();
+  const used = await getPool().query("SELECT COUNT(*)::int AS total FROM users WHERE lower(role)=lower($1)", [normalized]);
+  if ((used.rows[0]?.total || 0) > 0) {
+    const err = new Error("Role is assigned to existing users.");
+    err.code = "ROLE_IN_USE";
+    throw err;
+  }
+  const result = await getPool().query("DELETE FROM roles WHERE lower(name)=lower($1)", [normalized]);
+  return result.rowCount > 0;
 }
 
 async function listConnectionsByUserId(userId) {
@@ -156,7 +202,7 @@ async function updateUserAdmin(userId, { role, max_connections }) {
          max_connections = $2
      WHERE id = $3
      RETURNING id, username, provider, role, max_connections, created_at`,
-    [role, Number(max_connections), Number(userId)]
+    [String(role || "user").toLowerCase(), Number(max_connections), Number(userId)]
   );
   return rows[0] || null;
 }
@@ -192,7 +238,6 @@ async function createConnection(payload) {
   );
   return toPublicConnection(rows[0]);
 }
-
 
 async function updateConnection(connectionId, payload) {
   const { rows } = await getPool().query(
@@ -282,6 +327,10 @@ module.exports = {
   findUserByUsername,
   findUserByProvider,
   createUser,
+  listRoles,
+  roleExists,
+  createRole,
+  deleteRole,
   listConnectionsByUserId,
   countConnectionsByUserId,
   findConnectionByIdAndUser,

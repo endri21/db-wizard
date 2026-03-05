@@ -59,7 +59,7 @@ function readSeedUsers() {
 async function upsertLocalUser(user) {
   const username = String(user.username || "").trim();
   const password = String(user.password || "").trim();
-  const role = String(user.role || "user").toLowerCase() === "admin" ? "admin" : "user";
+  const role = String(user.role || "user").trim().toLowerCase();
   const maxConnections = Number.isFinite(Number(user.max_connections))
     ? Math.max(1, Math.min(200, Number(user.max_connections)))
     : 5;
@@ -86,6 +86,14 @@ async function upsertLocalUser(user) {
 
 async function seed() {
   await store.init();
+
+  const roleSet = new Set(["admin", "user"]);
+  for (const userSpec of readSeedUsers()) {
+    if (userSpec?.role) roleSet.add(String(userSpec.role).trim().toLowerCase());
+  }
+  for (const roleName of roleSet) {
+    if (roleName) await store.createRole(roleName);
+  }
 
   const seededUsers = [];
   for (const userSpec of readSeedUsers()) {

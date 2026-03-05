@@ -471,7 +471,7 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   font-weight: 700;
   color: #e0f2fe;
 }
-.admin-menu-panel .button { width: 100%; min-width: 0; background: rgba(255,255,255,.9); color: #1e3a8a; border-color: rgba(255,255,255,.85); }
+.admin-menu-panel .side-link { width: 100%; min-width: 0; background: rgba(255,255,255,.9); color: #1e3a8a; border-color: rgba(255,255,255,.85); }
 
 .workspace-table td, .workspace-table th { vertical-align: middle; }
 .status-wrap { display: inline-flex; align-items: center; gap: .45rem; font-weight: 600; }

@@ -205,8 +205,77 @@ app.post("/api/connections", requireAuth, async (req, res) => {
   res.json(conn);
 });
 
+app.get("/api/admin/roles", requireAdmin, async (_req, res) => {
+  res.json(await store.listRoles());
+});
+
+app.post("/api/admin/roles", requireAdmin, async (req, res) => {
+  const name = String(req.body?.name || "").trim().toLowerCase();
+  if (!name) return res.status(400).json({ error: "Role name is required." });
+  if (!/^[a-z][a-z0-9_-]{1,39}$/.test(name)) {
+    return res.status(400).json({ error: "Role name must start with a letter and contain only letters, numbers, '_' or '-'." });
+  }
+
+  const created = await store.createRole(name);
+  if (!created) return res.status(400).json({ error: "Role already exists." });
+  res.status(201).json(created);
+});
+
+app.delete("/api/admin/roles/:name", requireAdmin, async (req, res) => {
+  const roleName = String(req.params.name || "").toLowerCase();
+  if (["admin", "user"].includes(roleName)) {
+    return res.status(400).json({ error: "Default roles cannot be deleted." });
+  }
+
+  try {
+    const deleted = await store.deleteRole(roleName);
+    if (!deleted) return res.status(404).json({ error: "Role not found." });
+    return res.json({ message: "Role deleted." });
+  } catch (err) {
+    if (err.code === "ROLE_IN_USE") return res.status(400).json({ error: err.message });
+    throw err;
+  }
+});
+
 app.get("/api/admin/users", requireAdmin, async (_req, res) => {
   res.json(await store.listUsersForAdmin());
+});
+
+app.post("/api/admin/users", requireAdmin, async (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const password = String(req.body?.password || "").trim();
+  const role = String(req.body?.role || "user").trim().toLowerCase();
+  const max_connections = Number(req.body?.max_connections || 5);
+
+  if (!username || !password) {
+    return res.status(400).json({ error: "Username and password are required." });
+  }
+  if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
+    return res.status(400).json({ error: "max_connections must be between 1 and 200." });
+  }
+  if (await store.findUserByUsername(username)) {
+    return res.status(400).json({ error: "Username already exists." });
+  }
+  if (!(await store.roleExists(role))) {
+    return res.status(400).json({ error: "Selected role does not exist." });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await store.createUser({
+    username,
+    password_hash: passwordHash,
+    provider: "local",
+    role,
+    max_connections,
+  });
+
+  res.status(201).json({
+    id: user.id,
+    username: user.username,
+    provider: user.provider,
+    role: user.role,
+    max_connections: user.max_connections,
+  });
 });
 
 app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
@@ -220,7 +289,7 @@ app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
   const max_connections =
     maxInput == null ? Number(existing.max_connections || 5) : Number(maxInput);
 
-  if (!["admin", "user"].includes(role)) return res.status(400).json({ error: "Role must be 'admin' or 'user'." });
+  if (!(await store.roleExists(role))) return res.status(400).json({ error: "Selected role does not exist." });
   if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
     return res.status(400).json({ error: "max_connections must be between 1 and 200." });
   }

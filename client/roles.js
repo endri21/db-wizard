@@ -1,38 +1,30 @@
-function buildRoleRow(user, reload) {
+function buildRoleRow(role, reload) {
   const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${user.id}</td><td>${user.username}</td><td>${user.provider}</td>`;
-
-  const roleTd = document.createElement("td");
-  const select = document.createElement("select");
-  ["user", "admin"].forEach((r) => {
-    const opt = document.createElement("option");
-    opt.value = r;
-    opt.textContent = r;
-    if (user.role === r) opt.selected = true;
-    select.appendChild(opt);
-  });
-  roleTd.appendChild(select);
+  tr.innerHTML = `<td>${role.name}</td><td>${role.user_count}</td><td>${new Date(role.created_at).toLocaleString()}</td>`;
 
   const actionTd = document.createElement("td");
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.className = "secondary";
-  saveBtn.textContent = "Save";
-  saveBtn.addEventListener("click", async () => {
-    try {
-      await apiRequest(`/api/admin/users/${user.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ role: select.value }),
-      });
-      showSuccess(`Updated role for ${user.username}.`);
-      await reload();
-    } catch (err) {
-      showError(err.message);
-    }
-  });
-  actionTd.appendChild(saveBtn);
-
-  tr.append(roleTd, actionTd);
+  if (["admin", "user"].includes(String(role.name).toLowerCase())) {
+    const fixed = document.createElement("span");
+    fixed.className = "muted";
+    fixed.textContent = "System role";
+    actionTd.appendChild(fixed);
+  } else {
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "danger";
+    delBtn.textContent = "Delete";
+    delBtn.addEventListener("click", async () => {
+      try {
+        await apiRequest(`/api/admin/roles/${encodeURIComponent(role.name)}`, { method: "DELETE" });
+        await reload();
+        showSuccess(`Role '${role.name}' deleted.`);
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+    actionTd.appendChild(delBtn);
+  }
+  tr.appendChild(actionTd);
   return tr;
 }
 
@@ -47,17 +39,33 @@ function buildRoleRow(user, reload) {
 
   async function load() {
     try {
-      const users = await apiRequest("/api/admin/users");
+      const roles = await apiRequest("/api/admin/roles");
       document.getElementById("forbidden-text").classList.add("hidden");
       document.getElementById("roles-panel").classList.remove("hidden");
       const tbody = document.getElementById("roles-tbody");
       tbody.innerHTML = "";
-      users.forEach((u) => tbody.appendChild(buildRoleRow(u, load)));
+      roles.forEach((r) => tbody.appendChild(buildRoleRow(r, load)));
     } catch {
       document.getElementById("forbidden-text").classList.remove("hidden");
       document.getElementById("roles-panel").classList.add("hidden");
     }
   }
+
+  document.getElementById("create-role-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const name = document.getElementById("new-role-name").value.trim().toLowerCase();
+      await apiRequest("/api/admin/roles", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      e.target.reset();
+      await load();
+      showSuccess(`Role '${name}' created.`);
+    } catch (err) {
+      showError(err.message);
+    }
+  });
 
   await load();
 })();
