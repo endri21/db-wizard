@@ -146,6 +146,17 @@ Default demo credentials are controlled by:
 - `SEED_DEMO_USERNAME`
 - `SEED_DEMO_PASSWORD`
 
+Additional seeded users (for admin/role testing) are supported:
+
+- `SEED_ANALYST_USERNAME` / `SEED_ANALYST_PASSWORD` (default role `user`, max connections `10`)
+- `SEED_VIEWER_USERNAME` / `SEED_VIEWER_PASSWORD` (default role `user`, max connections `3`)
+
+You can fully override seeded users/roles/limits with JSON:
+
+```bash
+SEED_USERS_JSON=[{"username":"admin","password":"admin123","role":"admin","max_connections":50},{"username":"analyst","password":"analyst123","role":"user","max_connections":10}]
+```
+
 
 ### Target database SSL (for workspace connections)
 
