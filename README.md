@@ -169,6 +169,42 @@ TARGET_DB_SSL_REJECT_UNAUTHORIZED=false
 
 The app now retries PostgreSQL workspace connections with SSL automatically when it detects that exact `no encryption` failure.
 
+
+## Run with Docker
+
+You can run DB Wizard directly from the included Dockerfile.
+
+1. Build image:
+
+```bash
+docker build -t db-wizard .
+```
+
+2. Run container (replace DB URL and secrets):
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e PORT=3000 \
+  -e SESSION_SECRET=change-me \
+  -e APP_ENCRYPTION_KEY=change-me-too \
+  -e APP_DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/db_wizard \
+  -e APP_DATABASE_SSLMODE=disable \
+  db-wizard
+```
+
+Optional seed on startup:
+
+```bash
+docker run --rm -p 3000:3000 \
+  -e APP_DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/db_wizard \
+  -e SESSION_SECRET=change-me \
+  -e APP_ENCRYPTION_KEY=change-me-too \
+  -e RUN_DB_SEED=true \
+  db-wizard
+```
+
+The container entrypoint automatically runs DB schema initialization before launching the app.
+
 ## OAuth Setup
 
 Configure any provider in `.env`:

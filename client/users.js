@@ -1,4 +1,5 @@
 let availableRoles = [];
+let usersCache = [];
 
 function fillRoleSelect(selectEl, selectedRole) {
   selectEl.innerHTML = "";
@@ -11,47 +12,43 @@ function fillRoleSelect(selectEl, selectedRole) {
   });
 }
 
-function buildRow(user, reload) {
+function openModal(id) {
+  document.getElementById(id).classList.remove("hidden");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add("hidden");
+}
+
+function resetCreateForm() {
+  const form = document.getElementById("create-user-form");
+  form.reset();
+  document.getElementById("new-max").value = 5;
+  fillRoleSelect(document.getElementById("new-role"), "user");
+}
+
+function openEditUserModal(user) {
+  document.getElementById("edit-user-id").value = user.id;
+  document.getElementById("edit-username").value = user.username;
+  document.getElementById("edit-provider").value = user.provider;
+  fillRoleSelect(document.getElementById("edit-role"), user.role);
+  document.getElementById("edit-max").value = user.max_connections;
+  openModal("edit-user-modal");
+}
+
+function buildRow(user) {
   const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${user.id}</td><td>${user.username}</td><td>${user.provider}</td>`;
-
-  const roleTd = document.createElement("td");
-  const roleSelect = document.createElement("select");
-  fillRoleSelect(roleSelect, user.role);
-  roleTd.appendChild(roleSelect);
-
-  const countTd = document.createElement("td");
-  countTd.textContent = user.connection_count;
-
-  const maxTd = document.createElement("td");
-  const maxInput = document.createElement("input");
-  maxInput.type = "number";
-  maxInput.min = "1";
-  maxInput.max = "200";
-  maxInput.value = user.max_connections;
-  maxInput.style.width = "100px";
-  maxTd.appendChild(maxInput);
+  tr.innerHTML = `<td>${user.id}</td><td>${user.username}</td><td>${user.provider}</td><td>${user.role}</td><td>${user.connection_count}</td><td>${user.max_connections}</td>`;
 
   const actionTd = document.createElement("td");
-  const saveBtn = document.createElement("button");
-  saveBtn.type = "button";
-  saveBtn.className = "secondary";
-  saveBtn.textContent = "Save";
-  saveBtn.addEventListener("click", async () => {
-    try {
-      await apiRequest(`/api/admin/users/${user.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ role: roleSelect.value, max_connections: Number(maxInput.value) }),
-      });
-      showSuccess(`Updated ${user.username}.`);
-      await reload();
-    } catch (err) {
-      showError(err.message);
-    }
-  });
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "secondary";
+  editBtn.textContent = "Edit";
+  editBtn.addEventListener("click", () => openEditUserModal(user));
+  actionTd.appendChild(editBtn);
 
-  actionTd.appendChild(saveBtn);
-  tr.append(roleTd, countTd, maxTd, actionTd);
+  tr.appendChild(actionTd);
   return tr;
 }
 
@@ -66,15 +63,15 @@ function buildRow(user, reload) {
 
   async function loadRoles() {
     availableRoles = await apiRequest("/api/admin/roles");
-    const createSelect = document.getElementById("new-role");
-    fillRoleSelect(createSelect, "user");
+    fillRoleSelect(document.getElementById("new-role"), "user");
+    fillRoleSelect(document.getElementById("edit-role"), "user");
   }
 
   async function loadUsers() {
-    const users = await apiRequest("/api/admin/users");
+    usersCache = await apiRequest("/api/admin/users");
     const tbody = document.getElementById("users-tbody");
     tbody.innerHTML = "";
-    users.forEach((u) => tbody.appendChild(buildRow(u, loadAll)));
+    usersCache.forEach((u) => tbody.appendChild(buildRow(u)));
   }
 
   async function loadAll() {
@@ -89,6 +86,23 @@ function buildRow(user, reload) {
     }
   }
 
+  document.getElementById("open-create-user-modal-btn").addEventListener("click", () => {
+    resetCreateForm();
+    openModal("create-user-modal");
+  });
+
+  document.getElementById("close-create-user-modal-btn").addEventListener("click", () => closeModal("create-user-modal"));
+  document.getElementById("cancel-create-user-btn").addEventListener("click", () => closeModal("create-user-modal"));
+  document.getElementById("create-user-modal").addEventListener("click", (e) => {
+    if (e.target.id === "create-user-modal") closeModal("create-user-modal");
+  });
+
+  document.getElementById("close-edit-user-modal-btn").addEventListener("click", () => closeModal("edit-user-modal"));
+  document.getElementById("cancel-edit-user-btn").addEventListener("click", () => closeModal("edit-user-modal"));
+  document.getElementById("edit-user-modal").addEventListener("click", (e) => {
+    if (e.target.id === "edit-user-modal") closeModal("edit-user-modal");
+  });
+
   document.getElementById("create-user-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
@@ -101,10 +115,28 @@ function buildRow(user, reload) {
           max_connections: Number(document.getElementById("new-max").value),
         }),
       });
-      e.target.reset();
-      document.getElementById("new-max").value = 5;
+      closeModal("create-user-modal");
       await loadAll();
       showSuccess("User created.");
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
+  document.getElementById("edit-user-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      const id = document.getElementById("edit-user-id").value;
+      await apiRequest(`/api/admin/users/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          role: document.getElementById("edit-role").value,
+          max_connections: Number(document.getElementById("edit-max").value),
+        }),
+      });
+      closeModal("edit-user-modal");
+      await loadAll();
+      showSuccess("User updated.");
     } catch (err) {
       showError(err.message);
     }

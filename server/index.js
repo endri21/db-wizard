@@ -221,6 +221,27 @@ app.post("/api/admin/roles", requireAdmin, async (req, res) => {
   res.status(201).json(created);
 });
 
+app.put("/api/admin/roles/:name", requireAdmin, async (req, res) => {
+  const from = String(req.params.name || "").trim().toLowerCase();
+  const name = String(req.body?.name || "").trim().toLowerCase();
+  if (!name) return res.status(400).json({ error: "Role name is required." });
+  if (["admin", "user"].includes(from)) {
+    return res.status(400).json({ error: "Default roles cannot be renamed." });
+  }
+  if (!/^[a-z][a-z0-9_-]{1,39}$/.test(name)) {
+    return res.status(400).json({ error: "Role name must start with a letter and contain only letters, numbers, '_' or '-'." });
+  }
+
+  try {
+    const updated = await store.updateRoleName(from, name);
+    if (!updated) return res.status(404).json({ error: "Role not found." });
+    res.json(updated);
+  } catch (err) {
+    if (err.code === "ROLE_EXISTS") return res.status(400).json({ error: err.message });
+    throw err;
+  }
+});
+
 app.delete("/api/admin/roles/:name", requireAdmin, async (req, res) => {
   const roleName = String(req.params.name || "").toLowerCase();
   if (["admin", "user"].includes(roleName)) {

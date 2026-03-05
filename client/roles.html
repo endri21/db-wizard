@@ -27,6 +27,7 @@
             </div>
           </div>
           <div class="header-actions">
+            <button id="open-create-role-modal-btn" type="button">+ Create Role</button>
             <span id="user-chip" class="chip"></span>
             <button id="logout-btn" class="secondary">Logout</button>
           </div>
@@ -35,15 +36,6 @@
         <main class="panel portal-content portal-content-full">
           <p id="forbidden-text" class="warning-text hidden">Admin access required to manage roles.</p>
           <div id="roles-panel" class="hidden">
-            <section class="panel" style="margin-bottom:.9rem;">
-              <h3 style="margin-top:0;">Create Role</h3>
-              <form id="create-role-form" class="actions-row">
-                <label style="min-width:280px;">Role Name<input id="new-role-name" required placeholder="e.g. analyst" /></label>
-                <button type="submit">Create Role</button>
-              </form>
-              <p class="muted" style="margin:.35rem 0 0;">Allowed chars: letters, numbers, <code>_</code>, <code>-</code>.</p>
-            </section>
-
             <div class="table-scroll">
               <table>
                 <thead>
@@ -54,6 +46,40 @@
             </div>
           </div>
         </main>
+      </div>
+    </div>
+
+    <div id="create-role-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="create-role-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="create-role-modal-title">Create Role</h3>
+          <button id="close-create-role-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="create-role-form" class="grid" style="gap:.6rem;">
+          <label>Role Name<input id="new-role-name" required placeholder="e.g. analyst" /></label>
+          <p class="muted" style="margin:0;">Allowed chars: letters, numbers, <code>_</code>, <code>-</code>.</p>
+          <div class="actions-row">
+            <button type="submit">Create Role</button>
+            <button id="cancel-create-role-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-role-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-role-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="edit-role-modal-title">Edit Role</h3>
+          <button id="close-edit-role-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="edit-role-form" class="grid" style="gap:.6rem;">
+          <input id="edit-role-old-name" type="hidden" />
+          <label>Role Name<input id="edit-role-name" required /></label>
+          <div class="actions-row">
+            <button type="submit">Update Role</button>
+            <button id="cancel-edit-role-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
 

@@ -27,6 +27,7 @@
             </div>
           </div>
           <div class="header-actions">
+            <button id="open-create-user-modal-btn" type="button">+ Create User</button>
             <span id="user-chip" class="chip"></span>
             <button id="logout-btn" class="secondary">Logout</button>
           </div>
@@ -35,19 +36,6 @@
         <main class="panel portal-content portal-content-full">
           <p id="forbidden-text" class="warning-text hidden">Admin access required to manage users.</p>
           <div id="users-panel" class="hidden">
-            <section class="panel" style="margin-bottom:.9rem;">
-              <h3 style="margin-top:0;">Create User</h3>
-              <form id="create-user-form" class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem;align-items:end;">
-                <label>Username<input id="new-username" required /></label>
-                <label>Password<input id="new-password" type="password" required /></label>
-                <label>Role<select id="new-role" required></select></label>
-                <label>Max DBs<input id="new-max" type="number" min="1" max="200" value="5" required /></label>
-                <div>
-                  <button id="create-user-btn" type="submit">Create User</button>
-                </div>
-              </form>
-            </section>
-
             <div class="table-scroll">
               <table>
                 <thead>
@@ -58,6 +46,45 @@
             </div>
           </div>
         </main>
+      </div>
+    </div>
+
+    <div id="create-user-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="create-user-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="create-user-modal-title">Create User</h3>
+          <button id="close-create-user-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="create-user-form" class="grid" style="gap:.6rem;">
+          <label>Username<input id="new-username" required /></label>
+          <label>Password<input id="new-password" type="password" required /></label>
+          <label>Role<select id="new-role" required></select></label>
+          <label>Max DBs<input id="new-max" type="number" min="1" max="200" value="5" required /></label>
+          <div class="actions-row">
+            <button type="submit">Create User</button>
+            <button id="cancel-create-user-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-user-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="edit-user-modal-title">Edit User</h3>
+          <button id="close-edit-user-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="edit-user-form" class="grid" style="gap:.6rem;">
+          <input id="edit-user-id" type="hidden" />
+          <label>Username<input id="edit-username" readonly /></label>
+          <label>Provider<input id="edit-provider" readonly /></label>
+          <label>Role<select id="edit-role" required></select></label>
+          <label>Max DBs<input id="edit-max" type="number" min="1" max="200" required /></label>
+          <div class="actions-row">
+            <button type="submit">Update User</button>
+            <button id="cancel-edit-user-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
       </div>
     </div>
 

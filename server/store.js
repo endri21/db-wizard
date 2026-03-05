@@ -156,6 +156,43 @@ async function createRole(name) {
   return rows[0] || null;
 }
 
+async function updateRoleName(oldName, newName) {
+  const from = String(oldName || "").trim().toLowerCase();
+  const to = String(newName || "").trim().toLowerCase();
+  if (!from || !to) return null;
+
+  const client = await getPool().connect();
+  try {
+    await client.query("BEGIN");
+
+    const oldRole = await client.query("SELECT name FROM roles WHERE lower(name)=lower($1) LIMIT 1", [from]);
+    if (!oldRole.rows[0]) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const conflict = await client.query("SELECT 1 FROM roles WHERE lower(name)=lower($1) LIMIT 1", [to]);
+    if (conflict.rows[0] && from !== to) {
+      const err = new Error("Role already exists.");
+      err.code = "ROLE_EXISTS";
+      throw err;
+    }
+
+    if (from !== to) {
+      await client.query("UPDATE users SET role = $1 WHERE lower(role)=lower($2)", [to, from]);
+      await client.query("UPDATE roles SET name = $1 WHERE lower(name)=lower($2)", [to, from]);
+    }
+
+    await client.query("COMMIT");
+    return { name: to };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 async function deleteRole(name) {
   const normalized = String(name || "").trim().toLowerCase();
   const used = await getPool().query("SELECT COUNT(*)::int AS total FROM users WHERE lower(role)=lower($1)", [normalized]);
@@ -330,6 +367,7 @@ module.exports = {
   listRoles,
   roleExists,
   createRole,
+  updateRoleName,
   deleteRole,
   listConnectionsByUserId,
   countConnectionsByUserId,
