@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Roles</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-frame">
+      <aside class="side-nav">
+        <div class="side-nav-brand">DB Wizard</div>
+        <nav class="side-nav-links">
+          <a class="side-link" href="/dashboard">Dashboard</a>
+          <a class="side-link" href="/users">Users</a>
+          <a class="side-link active" href="/roles">Roles</a>
+        </nav>
+      </aside>
+
+      <div class="app-shell portal-shell">
+        <header class="app-header portal-header">
+          <div class="brand-wrap">
+            <div class="brand-badge">DB</div>
+            <div>
+              <h1>Role Management</h1>
+              <p class="muted">Create and maintain available user roles</p>
+            </div>
+          </div>
+          <div class="header-actions">
+            <span id="user-chip" class="chip"></span>
+            <button id="logout-btn" class="secondary">Logout</button>
+          </div>
+        </header>
+
+        <main class="panel portal-content portal-content-full">
+          <p id="forbidden-text" class="warning-text hidden">Admin access required to manage roles.</p>
+          <div id="roles-panel" class="hidden">
+            <div class="portal-section-header section-actions" style="margin-bottom:.55rem;">
+              <div></div>
+              <button id="open-create-role-modal-btn" type="button" class="btn-small">+ Create Role</button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th>Role</th><th>Users</th><th>Created</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="roles-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div id="create-role-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="create-role-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="create-role-modal-title">Create Role</h3>
+          <button id="close-create-role-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="create-role-form" class="grid" style="gap:.6rem;">
+          <label>Role Name<input id="new-role-name" required placeholder="e.g. analyst" /></label>
+          <p class="muted" style="margin:0;">Allowed chars: letters, numbers, <code>_</code>, <code>-</code>.</p>
+          <div class="actions-row">
+            <button type="submit">Create Role</button>
+            <button id="cancel-create-role-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-role-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-role-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="edit-role-modal-title">Edit Role</h3>
+          <button id="close-edit-role-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="edit-role-form" class="grid" style="gap:.6rem;">
+          <input id="edit-role-old-name" type="hidden" />
+          <label>Role Name<input id="edit-role-name" required /></label>
+          <div class="actions-row">
+            <button type="submit">Update Role</button>
+            <button id="cancel-edit-role-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      © <span id="footer-year"></span> Yagni Technologies · <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a>
+    </footer>
+    <script>document.getElementById('footer-year') && (document.getElementById('footer-year').textContent = new Date().getFullYear());</script>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/roles.js"></script>
+  </body>
+</html>

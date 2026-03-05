@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Register</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="auth-shell">
+      <section class="auth-form-panel panel auth-single-card">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>Create Workspace Account</h1>
+            <p class="muted">Provision your portal identity</p>
+          </div>
+        </div>
+
+        <form id="register-form">
+          <label>Username<input name="username" required /></label>
+          <label>Password<input type="password" name="password" required /></label>
+          <button type="submit">Create Account</button>
+        </form>
+
+        <div class="auth-links">
+          <span class="muted">Already have access?</span>
+          <a href="/">Back to sign in</a>
+        </div>
+      </section>
+    </div>
+
+    <footer class="app-footer">
+      © <span id="footer-year"></span> Yagni Technologies · <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a>
+    </footer>
+    <script>document.getElementById('footer-year') && (document.getElementById('footer-year').textContent = new Date().getFullYear());</script>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/register.js"></script>
+  </body>
+</html>
