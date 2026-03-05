@@ -68,7 +68,7 @@ async function loadUsers() {
   try {
     const me = await requireUserOrRedirect();
     if (!me) return;
-    if (me.role !== "admin") {
+    if (String(me.role || "").toLowerCase() !== "admin") {
       window.location.href = "/dashboard";
       return;
     }

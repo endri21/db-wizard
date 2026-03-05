@@ -267,8 +267,15 @@ async function loadConnections() {
     const user = await requireUserOrRedirect();
     if (!user) return;
     document.getElementById("user-chip").textContent = `Signed in: ${user.username}`;
-    if (user.role === "admin") {
+    if (String(user.role || "").toLowerCase() === "admin") {
       document.getElementById("admin-link").classList.remove("hidden");
+    } else {
+      try {
+        await apiRequest("/api/admin/users");
+        document.getElementById("admin-link").classList.remove("hidden");
+      } catch {
+        // not admin; keep hidden
+      }
     }
 
     document.getElementById("logout-btn").addEventListener("click", async () => {

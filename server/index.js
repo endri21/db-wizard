@@ -48,9 +48,13 @@ function requireAuth(req, res, next) {
   return next();
 }
 
+function isAdminUser(user) {
+  return String(user?.role || "").toLowerCase() === "admin";
+}
+
 function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-  if (req.user.role !== "admin") return res.status(403).json({ error: "Admin access required." });
+  if (!isAdminUser(req.user)) return res.status(403).json({ error: "Admin access required." });
   return next();
 }
 
@@ -86,7 +90,7 @@ app.get("/workspace/:id", requireAuthPage, (_req, res) => {
 });
 
 app.get("/admin", requireAuthPage, (req, res) => {
-  if (req.user.role !== "admin") return res.redirect("/dashboard");
+  if (!isAdminUser(req.user)) return res.redirect("/dashboard");
   return res.sendFile(path.join(__dirname, "..", "client", "admin.html"));
 });
 
