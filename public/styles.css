@@ -407,6 +407,7 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .status-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; }
 .status-dot.ok { background: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,.18); }
 .status-dot.bad { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+.status-dot.checking { background: #64748b; box-shadow: 0 0 0 3px rgba(100,116,139,.18); }
 
 .workspace-path {
   display: flex;

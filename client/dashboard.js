@@ -64,13 +64,24 @@ function getPayloadFromForm() {
   };
 }
 
-function statusCell(status) {
+function statusCell(status = { state: "checking" }) {
   const wrap = document.createElement("div");
   wrap.className = "status-wrap";
+
   const dot = document.createElement("span");
-  dot.className = `status-dot ${status.connected ? "ok" : "bad"}`;
   const txt = document.createElement("span");
-  txt.textContent = status.connected ? "Connected" : "Disconnected";
+
+  if (status.state === "checking") {
+    dot.className = "status-dot checking";
+    txt.textContent = "Checking...";
+  } else if (status.connected) {
+    dot.className = "status-dot ok";
+    txt.textContent = "Connected";
+  } else {
+    dot.className = "status-dot bad";
+    txt.textContent = "Disconnected";
+  }
+
   wrap.append(dot, txt);
   return wrap;
 }
@@ -78,10 +89,26 @@ function statusCell(status) {
 async function fetchConnectionStatus(connectionId) {
   try {
     const res = await apiRequest(`/api/connections/${connectionId}/status`);
-    return { connected: Boolean(res.connected) };
+    return { state: "done", connected: Boolean(res.connected) };
   } catch {
-    return { connected: false };
+    return { state: "done", connected: false };
   }
+}
+
+function setStatusForConnection(connectionId, status) {
+  document.querySelectorAll(`[data-status-for="${connectionId}"]`).forEach((el) => {
+    el.innerHTML = "";
+    el.appendChild(statusCell(status));
+  });
+}
+
+async function refreshConnectionStatuses(connections) {
+  await Promise.all(
+    connections.map(async (conn) => {
+      const status = await fetchConnectionStatus(conn.id);
+      setStatusForConnection(conn.id, status);
+    })
+  );
 }
 
 function actionIconButton(symbol, title, className = "") {
@@ -115,7 +142,7 @@ function applyViewMode() {
   localStorage.setItem("dashboard_view", currentView);
 }
 
-function buildCardRow(conn, status) {
+function buildCardRow(conn) {
   const li = document.createElement("li");
   li.className = "resource-card";
 
@@ -136,7 +163,9 @@ function buildCardRow(conn, status) {
 
   top.append(titleWrap, chip);
 
-  const stat = statusCell(status);
+  const stat = document.createElement("div");
+  stat.dataset.statusFor = String(conn.id);
+  stat.appendChild(statusCell({ state: "checking" }));
 
   const actions = document.createElement("div");
   actions.className = "actions-row";
@@ -157,7 +186,7 @@ function buildCardRow(conn, status) {
   return li;
 }
 
-function buildTableRow(conn, status) {
+function buildTableRow(conn) {
   const tr = document.createElement("tr");
 
   const nameTd = document.createElement("td");
@@ -174,7 +203,8 @@ function buildTableRow(conn, status) {
   hostTd.textContent = conn.server || "from connection string";
 
   const statusTd = document.createElement("td");
-  statusTd.appendChild(statusCell(status));
+  statusTd.dataset.statusFor = String(conn.id);
+  statusTd.appendChild(statusCell({ state: "checking" }));
 
   const actionsTd = document.createElement("td");
   const actions = document.createElement("div");
@@ -223,15 +253,13 @@ async function loadConnections() {
     return;
   }
 
-  const statuses = await Promise.all(connections.map((c) => fetchConnectionStatus(c.id)));
-
-  connections.forEach((conn, idx) => {
-    const status = statuses[idx];
-    cardList.appendChild(buildCardRow(conn, status));
-    tableBody.appendChild(buildTableRow(conn, status));
+  connections.forEach((conn) => {
+    cardList.appendChild(buildCardRow(conn));
+    tableBody.appendChild(buildTableRow(conn));
   });
 
   applyViewMode();
+  refreshConnectionStatuses(connections);
 }
 
 (async function initDashboard() {
