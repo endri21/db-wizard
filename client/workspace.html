@@ -1,0 +1,117 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Workspace</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>SQL Workspace</h1>
+            <p id="workspace-subtitle" class="muted">Run and manage read-only SQL</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <a id="admin-link" href="/admin" class="button secondary hidden">Admin</a>
+          <span id="user-chip" class="chip"></span>
+          <button id="logout-btn" class="secondary">Logout</button>
+        </div>
+      </header>
+
+      <section class="workspace-path panel">
+        <a href="/dashboard" class="path-back">/home</a>
+        <span class="path-sep">/</span>
+        <span class="path-current">ide</span>
+      </section>
+
+      <section class="workspace-enterprise">
+        <aside class="panel left-rail">
+          <h3>Schemas & Tables</h3>
+          <ul id="schema-tree" class="schema-tree"></ul>
+          <p class="muted tree-tip">Tip: right-click database or table nodes for quick actions.</p>
+
+        </aside>
+
+        <main class="panel ide-panel">
+          <div class="ide-header">
+            <h3>SQL IDE</h3>
+            <span id="connection-chip" class="chip"></span>
+          </div>
+
+          <div class="ide-tabs">
+            <button id="tab-sql" class="tab-btn active" type="button">SQL Runner</button>
+            <button id="tab-saved" class="tab-btn" type="button">Saved Queries</button>
+          </div>
+
+          <section id="pane-sql" class="tab-pane">
+            <label>Query Name
+              <input id="query-name" placeholder="e.g. Monthly Revenue" />
+            </label>
+            <textarea id="query-text" class="sql-editor" rows="11">SELECT 1 as ok;</textarea>
+
+            <div class="actions-row">
+              <button id="run-query-btn">Run Query</button>
+              <button id="save-query-btn" class="secondary">Save Query</button>
+            </div>
+
+            <div id="result-wrap" class="result-wrap hidden">
+              <h4>Result</h4>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr id="result-head"></tr></thead>
+                  <tbody id="result-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="pane-saved" class="tab-pane hidden">
+            <ul id="saved-query-list" class="saved-query-list"></ul>
+          </section>
+        </main>
+      </section>
+
+      <div id="diagram-modal" class="modal hidden">
+        <div class="panel modal-card confirm-modal">
+          <div class="modal-header">
+            <h3>Choose Tables for Diagram</h3>
+            <button id="diagram-close-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+          </div>
+          <p class="muted">Select one or more tables to visualize relationships.</p>
+          <div id="diagram-table-picker" class="table-picker"></div>
+          <div class="actions-row">
+            <button id="diagram-generate-btn" type="button">Generate Diagram</button>
+            <button id="diagram-cancel-btn" class="secondary" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="diagram-view-modal" class="modal hidden">
+        <div class="panel modal-card diagram-view-card">
+          <div class="modal-header">
+            <h3>Table Relationship Diagram</h3>
+            <button id="diagram-view-close-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+          </div>
+          <div class="diagram-header">
+            <span id="diagram-modal-count" class="muted">No diagram generated yet.</span>
+            <div class="actions-row compact-actions">
+              <button id="diagram-save-btn" class="secondary" type="button">Save Diagram</button>
+              <button id="diagram-view-dismiss-btn" type="button">Close Without Save</button>
+            </div>
+          </div>
+          <div id="diagram-modal-canvas" class="diagram-canvas">
+            <p class="muted">Generate a diagram from the database context menu.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/workspace.js"></script>
+  </body>
+</html>
