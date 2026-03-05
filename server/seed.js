@@ -28,9 +28,12 @@ async function seed() {
   const passwordHash = await bcrypt.hash(password, 10);
 
   const userResult = await pool.query(
-    `INSERT INTO users (username, password_hash, provider)
-     VALUES ($1, $2, 'local')
-     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash
+    `INSERT INTO users (username, password_hash, provider, role, max_connections)
+     VALUES ($1, $2, 'local', 'admin', 50)
+     ON CONFLICT (username) DO UPDATE
+       SET password_hash = EXCLUDED.password_hash,
+           role = 'admin',
+           max_connections = 50
      RETURNING id, username`,
     [username, passwordHash]
   );

@@ -63,6 +63,8 @@ async function init() {
       password_hash TEXT,
       provider TEXT NOT NULL DEFAULT 'local',
       provider_id TEXT,
+      role TEXT NOT NULL DEFAULT 'user',
+      max_connections INTEGER NOT NULL DEFAULT 5,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
@@ -89,6 +91,9 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS max_connections INTEGER NOT NULL DEFAULT 5;
   `);
 }
 
@@ -109,10 +114,10 @@ async function findUserByProvider(provider, providerId) {
 
 async function createUser({ username, password_hash = null, provider = "local", provider_id = null }) {
   const { rows } = await getPool().query(
-    `INSERT INTO users (username, password_hash, provider, provider_id)
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO users (username, password_hash, provider, provider_id, role, max_connections)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [username, password_hash, provider, provider_id]
+    [username, password_hash, provider, provider_id, "user", 5]
   );
   return rows[0];
 }
@@ -123,6 +128,37 @@ async function listConnectionsByUserId(userId) {
     [Number(userId)]
   );
   return rows.map(toPublicConnection);
+}
+
+async function countConnectionsByUserId(userId) {
+  const { rows } = await getPool().query("SELECT COUNT(*)::int AS total FROM db_connections WHERE user_id = $1", [
+    Number(userId),
+  ]);
+  return rows[0]?.total || 0;
+}
+
+async function listUsersForAdmin() {
+  const { rows } = await getPool().query(
+    `SELECT u.id, u.username, u.provider, u.role, u.max_connections, u.created_at,
+            COUNT(c.id)::int AS connection_count
+     FROM users u
+     LEFT JOIN db_connections c ON c.user_id = u.id
+     GROUP BY u.id
+     ORDER BY u.id ASC`
+  );
+  return rows;
+}
+
+async function updateUserAdmin(userId, { role, max_connections }) {
+  const { rows } = await getPool().query(
+    `UPDATE users
+     SET role = $1,
+         max_connections = $2
+     WHERE id = $3
+     RETURNING id, username, provider, role, max_connections, created_at`,
+    [role, Number(max_connections), Number(userId)]
+  );
+  return rows[0] || null;
 }
 
 async function findConnectionByIdAndUser(connectionId, userId, options = {}) {
@@ -247,6 +283,7 @@ module.exports = {
   findUserByProvider,
   createUser,
   listConnectionsByUserId,
+  countConnectionsByUserId,
   findConnectionByIdAndUser,
   createConnection,
   updateConnection,
@@ -256,4 +293,6 @@ module.exports = {
   createSavedQuery,
   updateSavedQuery,
   deleteSavedQuery,
+  listUsersForAdmin,
+  updateUserAdmin,
 };

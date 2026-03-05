@@ -48,6 +48,12 @@ function requireAuth(req, res, next) {
   return next();
 }
 
+function requireAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+  if (req.user.role !== "admin") return res.status(403).json({ error: "Admin access required." });
+  return next();
+}
+
 async function getOwnedConnection(connectionId, userId, options = {}) {
   return store.findConnectionByIdAndUser(connectionId, userId, options);
 }
@@ -77,6 +83,11 @@ app.get("/dashboard", requireAuthPage, (_req, res) => {
 
 app.get("/workspace/:id", requireAuthPage, (_req, res) => {
   res.sendFile(path.join(__dirname, "..", "client", "workspace.html"));
+});
+
+app.get("/admin", requireAuthPage, (req, res) => {
+  if (req.user.role !== "admin") return res.redirect("/dashboard");
+  return res.sendFile(path.join(__dirname, "..", "client", "admin.html"));
 });
 
 app.get("/api/auth/providers", (_req, res) => {
@@ -122,7 +133,15 @@ app.post("/api/login", async (req, res) => {
 
 app.get("/api/me", (req, res) => {
   if (!req.user) return res.json({ user: null });
-  return res.json({ user: { id: req.user.id, username: req.user.username, provider: req.user.provider } });
+  return res.json({
+    user: {
+      id: req.user.id,
+      username: req.user.username,
+      provider: req.user.provider,
+      role: req.user.role,
+      max_connections: req.user.max_connections,
+    },
+  });
 });
 
 app.post("/api/logout", (req, res) => {
@@ -155,6 +174,12 @@ app.post("/api/connections", requireAuth, async (req, res) => {
   const { name, engine, connection_string, server, port, database_name, db_username, db_password } = req.body;
   if (!name || !engine) return res.status(400).json({ error: "Connection name and engine are required." });
 
+  const currentCount = await store.countConnectionsByUserId(req.user.id);
+  const maxAllowed = Number(req.user.max_connections || 5);
+  if (currentCount >= maxAllowed) {
+    return res.status(400).json({ error: `Maximum connections reached (${maxAllowed}). Contact admin to increase limit.` });
+  }
+
   const conn = await store.createConnection({
     user_id: req.user.id,
     name,
@@ -167,6 +192,26 @@ app.post("/api/connections", requireAuth, async (req, res) => {
     db_password,
   });
   res.json(conn);
+});
+
+app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+  res.json(await store.listUsersForAdmin());
+});
+
+app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  const role = String(req.body.role || "").toLowerCase();
+  const max_connections = Number(req.body.max_connections);
+
+  if (!["admin", "user"].includes(role)) {
+    return res.status(400).json({ error: "Role must be 'admin' or 'user'." });
+  }
+  if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
+    return res.status(400).json({ error: "max_connections must be between 1 and 200." });
+  }
+
+  const updated = await store.updateUserAdmin(req.params.id, { role, max_connections });
+  if (!updated) return res.status(404).json({ error: "User not found." });
+  res.json(updated);
 });
 
 

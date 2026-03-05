@@ -267,6 +267,9 @@ async function loadConnections() {
     const user = await requireUserOrRedirect();
     if (!user) return;
     document.getElementById("user-chip").textContent = `Signed in: ${user.username}`;
+    if (user.role === "admin") {
+      document.getElementById("admin-link").classList.remove("hidden");
+    }
 
     document.getElementById("logout-btn").addEventListener("click", async () => {
       await apiRequest("/api/logout", { method: "POST" });
