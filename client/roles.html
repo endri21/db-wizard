@@ -37,7 +37,7 @@
           <div id="roles-panel" class="hidden">
             <div class="portal-section-header section-actions" style="margin-bottom:.55rem;">
               <div></div>
-              <button id="open-create-role-modal-btn" type="button">+ Create Role</button>
+              <button id="open-create-role-modal-btn" type="button" class="btn-small">+ Create Role</button>
             </div>
             <div class="table-scroll">
               <table>
@@ -85,6 +85,11 @@
         </form>
       </div>
     </div>
+
+    <footer class="app-footer">
+      © <span id="footer-year"></span> Yagni Technologies · <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a>
+    </footer>
+    <script>document.getElementById('footer-year') && (document.getElementById('footer-year').textContent = new Date().getFullYear());</script>
 
     <script src="/client/shared.js"></script>
     <script src="/client/roles.js"></script>

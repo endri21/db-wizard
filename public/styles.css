@@ -351,6 +351,7 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   color: #e2e8f0;
 }
 .auth-hero .muted { color: #eef2ff; }
+.auth-hero .feature-list { color: #eef2ff; }
 .auth-hero h2 { margin-top: 1rem; margin-bottom: .45rem; }
 .auth-signin-card { background: rgba(255,255,255,.92); }
 .hero-pills { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
@@ -578,3 +579,13 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .table-picker { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: .6rem; margin: .55rem 0; display: grid; gap: .4rem; }
 .table-picker-item { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: .9rem; }
 .table-picker-item input { width: auto; margin: 0; }
+
+
+.app-footer {
+  text-align: center;
+  color: #64748b;
+  font-size: .85rem;
+  padding: .9rem 1rem 1.2rem;
+}
+.app-footer a { color: #2563eb; text-decoration: none; font-weight: 600; }
+.app-footer a:hover { text-decoration: underline; }
