@@ -582,10 +582,28 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 
 
 .app-footer {
+  width: fit-content;
+  max-width: calc(100% - 2rem);
+  margin: 1rem auto 1.1rem;
+  padding: .55rem .9rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(239,246,255,.96));
+  box-shadow: 0 8px 22px rgba(15,23,42,.08);
+  color: #475569;
+  font-size: .82rem;
   text-align: center;
-  color: #64748b;
-  font-size: .85rem;
-  padding: .9rem 1rem 1.2rem;
+  letter-spacing: .01em;
 }
-.app-footer a { color: #2563eb; text-decoration: none; font-weight: 600; }
-.app-footer a:hover { text-decoration: underline; }
+.app-footer a {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-weight: 700;
+  padding: .1rem .45rem;
+  border-radius: 999px;
+  background: rgba(37,99,235,.1);
+}
+.app-footer a:hover {
+  background: rgba(37,99,235,.16);
+  text-decoration: none;
+}
