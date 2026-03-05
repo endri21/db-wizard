@@ -34,8 +34,6 @@
           <ul id="schema-tree" class="schema-tree"></ul>
           <p class="muted tree-tip">Tip: right-click database or table nodes for quick actions.</p>
 
-          <h3>Saved Queries</h3>
-          <ul id="saved-query-list" class="saved-query-list"></ul>
         </aside>
 
         <main class="panel ide-panel">
@@ -44,35 +42,36 @@
             <span id="connection-chip" class="chip"></span>
           </div>
 
-          <label>Query Name
-            <input id="query-name" placeholder="e.g. Monthly Revenue" />
-          </label>
-          <textarea id="query-text" class="sql-editor" rows="11">SELECT 1 as ok;</textarea>
-
-          <div class="actions-row">
-            <button id="run-query-btn">Run Query</button>
-            <button id="save-query-btn" class="secondary">Save Query</button>
+          <div class="ide-tabs">
+            <button id="tab-sql" class="tab-btn active" type="button">SQL Runner</button>
+            <button id="tab-saved" class="tab-btn" type="button">Saved Queries</button>
           </div>
 
-          <div id="result-wrap" class="result-wrap hidden">
-            <h4>Result</h4>
-            <div class="table-scroll">
-              <table>
-                <thead><tr id="result-head"></tr></thead>
-                <tbody id="result-body"></tbody>
-              </table>
-            </div>
-          </div>
+          <section id="pane-sql" class="tab-pane">
+            <label>Query Name
+              <input id="query-name" placeholder="e.g. Monthly Revenue" />
+            </label>
+            <textarea id="query-text" class="sql-editor" rows="11">SELECT 1 as ok;</textarea>
 
-          <div class="diagram-wrap panel-sub">
-            <div class="diagram-header">
-              <h4>Table Relationship Diagram</h4>
-              <span id="diagram-count" class="muted">No diagram generated yet.</span>
+            <div class="actions-row">
+              <button id="run-query-btn">Run Query</button>
+              <button id="save-query-btn" class="secondary">Save Query</button>
             </div>
-            <div id="diagram-canvas" class="diagram-canvas">
-              <p class="muted">Right-click the database node in the tree and choose <strong>Choose tables for diagram</strong>.</p>
+
+            <div id="result-wrap" class="result-wrap hidden">
+              <h4>Result</h4>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr id="result-head"></tr></thead>
+                  <tbody id="result-body"></tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section id="pane-saved" class="tab-pane hidden">
+            <ul id="saved-query-list" class="saved-query-list"></ul>
+          </section>
         </main>
       </section>
 
@@ -87,6 +86,25 @@
           <div class="actions-row">
             <button id="diagram-generate-btn" type="button">Generate Diagram</button>
             <button id="diagram-cancel-btn" class="secondary" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="diagram-view-modal" class="modal hidden">
+        <div class="panel modal-card diagram-view-card">
+          <div class="modal-header">
+            <h3>Table Relationship Diagram</h3>
+            <button id="diagram-view-close-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+          </div>
+          <div class="diagram-header">
+            <span id="diagram-modal-count" class="muted">No diagram generated yet.</span>
+            <div class="actions-row compact-actions">
+              <button id="diagram-save-btn" class="secondary" type="button">Save Diagram</button>
+              <button id="diagram-view-dismiss-btn" type="button">Close Without Save</button>
+            </div>
+          </div>
+          <div id="diagram-modal-canvas" class="diagram-canvas">
+            <p class="muted">Generate a diagram from the database context menu.</p>
           </div>
         </div>
       </div>

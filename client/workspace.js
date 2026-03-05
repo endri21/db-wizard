@@ -3,6 +3,7 @@ let currentEngine = "postgresql";
 let activeContextMenu = null;
 let schemaTreeCache = [];
 let currentConnection = null;
+let latestDiagramPayload = null;
 
 function connectionIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -238,8 +239,8 @@ function closeDiagramModal() {
 }
 
 function renderRelationshipDiagram(relationships, selectedTables) {
-  const canvas = document.getElementById("diagram-canvas");
-  const count = document.getElementById("diagram-count");
+  const canvas = document.getElementById("diagram-modal-canvas");
+  const count = document.getElementById("diagram-modal-count");
   canvas.innerHTML = "";
 
   if (!selectedTables.length) {
@@ -418,6 +419,8 @@ function renderRelationshipDiagram(relationships, selectedTables) {
 
   canvas.appendChild(viewport);
   count.textContent = `${tableNames.length} table(s), ${relevant.length} relation(s) • drag nodes to reorganize`;
+  latestDiagramPayload = { generated_at: new Date().toISOString(), tables: tableNames, relationships: relevant };
+  document.getElementById("diagram-view-modal").classList.remove("hidden");
 }
 
 async function generateDiagram(connectionId) {
@@ -431,7 +434,7 @@ async function generateDiagram(connectionId) {
     });
     renderRelationshipDiagram(data.relationships || [], checked);
     closeDiagramModal();
-    showSuccess("Relationship diagram generated.");
+    showSuccess("Relationship diagram opened.");
   } catch (err) {
     showError(err.message);
   }
@@ -578,6 +581,45 @@ function renderSchemaTree(connection, schemas = []) {
   });
 }
 
+
+function closeDiagramViewModal() {
+  document.getElementById("diagram-view-modal").classList.add("hidden");
+}
+
+function saveCurrentDiagram() {
+  if (!latestDiagramPayload) {
+    showError("No diagram to save yet.");
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(latestDiagramPayload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `diagram-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showSuccess("Diagram JSON exported.");
+}
+
+function setupWorkspaceTabs() {
+  const sqlBtn = document.getElementById("tab-sql");
+  const savedBtn = document.getElementById("tab-saved");
+  const sqlPane = document.getElementById("pane-sql");
+  const savedPane = document.getElementById("pane-saved");
+
+  const activate = (which) => {
+    const sqlActive = which === "sql";
+    sqlBtn.classList.toggle("active", sqlActive);
+    savedBtn.classList.toggle("active", !sqlActive);
+    sqlPane.classList.toggle("hidden", !sqlActive);
+    savedPane.classList.toggle("hidden", sqlActive);
+  };
+
+  sqlBtn.addEventListener("click", () => activate("sql"));
+  savedBtn.addEventListener("click", () => activate("saved"));
+}
+
 async function loadSchemas(connection) {
   const data = await apiRequest(`/api/connections/${connection.id}/tables`);
   schemaTreeCache = data.schemas || [];
@@ -712,6 +754,15 @@ async function loadSavedQueries(connectionId) {
       if (e.target.id === "diagram-modal") closeDiagramModal();
     });
     document.getElementById("diagram-generate-btn").addEventListener("click", () => generateDiagram(connectionId));
+
+    document.getElementById("diagram-view-close-btn").addEventListener("click", closeDiagramViewModal);
+    document.getElementById("diagram-view-dismiss-btn").addEventListener("click", closeDiagramViewModal);
+    document.getElementById("diagram-save-btn").addEventListener("click", saveCurrentDiagram);
+    document.getElementById("diagram-view-modal").addEventListener("click", (e) => {
+      if (e.target.id === "diagram-view-modal") closeDiagramViewModal();
+    });
+
+    setupWorkspaceTabs();
 
     document.getElementById("save-query-btn").addEventListener("click", async () => {
       try {
