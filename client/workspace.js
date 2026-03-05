@@ -262,6 +262,8 @@ function renderRelationshipDiagram(relationships, selectedTables) {
     empty.textContent = "No foreign-key relationships found for the selected tables.";
     canvas.appendChild(empty);
     count.textContent = `${selectedTables.length} table(s), 0 relation(s)`;
+    latestDiagramPayload = { generated_at: new Date().toISOString(), tables: selectedTables, relationships: [] };
+    document.getElementById("diagram-view-modal").classList.remove("hidden");
     return;
   }
 

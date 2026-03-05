@@ -187,8 +187,8 @@ hr { border: none; border-top: 1px solid var(--line); margin: 1rem 0; }
 .resource-card h3 { margin: 0; font-size: 1rem; }
 .resource-card-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
 
-.workspace-enterprise { display: grid; grid-template-columns: 340px 1fr; gap: 1rem; }
-.left-rail { max-height: calc(100vh - 140px); overflow: auto; scrollbar-gutter: stable; }
+.workspace-enterprise { display: grid; grid-template-columns: 340px 1fr; gap: 1rem; align-items: start; }
+.left-rail { position: sticky; top: .55rem; max-height: calc(100vh - 96px); overflow: auto; scrollbar-gutter: stable; }
 .left-rail::-webkit-scrollbar { width: 10px; }
 .left-rail::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
 .left-rail::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 999px; }
