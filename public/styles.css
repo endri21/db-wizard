@@ -350,7 +350,7 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   background: linear-gradient(160deg, #0f172a 0%, #1e3a8a 55%, #0ea5e9 100%);
   color: #e2e8f0;
 }
-.auth-hero .muted { color: #c7d2fe; }
+.auth-hero .muted { color: #eef2ff; }
 .auth-hero h2 { margin-top: 1rem; margin-bottom: .45rem; }
 .auth-signin-card { background: rgba(255,255,255,.92); }
 .hero-pills { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
