@@ -764,6 +764,16 @@ async function loadSavedQueries(connectionId) {
     const user = await requireUserOrRedirect();
     if (!user) return;
     document.getElementById("user-chip").textContent = `Signed in: ${user.username}`;
+    if (String(user.role || "").toLowerCase() === "admin") {
+      document.getElementById("admin-link").classList.remove("hidden");
+    } else {
+      try {
+        await apiRequest("/api/admin/users");
+        document.getElementById("admin-link").classList.remove("hidden");
+      } catch {
+        // not admin
+      }
+    }
 
     document.getElementById("logout-btn").addEventListener("click", async () => {
       await apiRequest("/api/logout", { method: "POST" });
