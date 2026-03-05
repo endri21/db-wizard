@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const cors = require("cors");
 
 const store = require("./store");
-const { listTables, listRelationships, runQuery } = require("./dbClients");
+const { listTables, listRelationships, listTableColumns, runQuery } = require("./dbClients");
 const { ensureReadOnlyQuery } = require("./queryGuard");
 const { configurePassport, passport } = require("./auth");
 
@@ -259,7 +259,14 @@ app.post("/api/connections/:id/relationships", requireAuth, async (req, res) => 
   try {
     const selectedTables = Array.isArray(req.body?.tables) ? req.body.tables : [];
     const relationships = await listRelationships(conn, selectedTables);
-    res.json({ relationships });
+    const tableSet = new Set(selectedTables.map((t) => String(t).toLowerCase()));
+    relationships.forEach((rel) => {
+      tableSet.add(`${rel.from_schema}.${rel.from_table}`.toLowerCase());
+      tableSet.add(`${rel.to_schema}.${rel.to_table}`.toLowerCase());
+    });
+    const tables = Array.from(tableSet);
+    const columns = await listTableColumns(conn, tables);
+    res.json({ relationships, columns });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

@@ -238,7 +238,7 @@ function closeDiagramModal() {
   document.getElementById("diagram-modal").classList.add("hidden");
 }
 
-function renderRelationshipDiagram(relationships, selectedTables) {
+function renderRelationshipDiagram(relationships, selectedTables, columns = []) {
   const canvas = document.getElementById("diagram-modal-canvas");
   const count = document.getElementById("diagram-modal-count");
   canvas.innerHTML = "";
@@ -262,7 +262,7 @@ function renderRelationshipDiagram(relationships, selectedTables) {
     empty.textContent = "No foreign-key relationships found for the selected tables.";
     canvas.appendChild(empty);
     count.textContent = `${selectedTables.length} table(s), 0 relation(s)`;
-    latestDiagramPayload = { generated_at: new Date().toISOString(), tables: selectedTables, relationships: [] };
+    latestDiagramPayload = { generated_at: new Date().toISOString(), tables: selectedTables, relationships: [], columns };
     document.getElementById("diagram-view-modal").classList.remove("hidden");
     return;
   }
@@ -273,6 +273,20 @@ function renderRelationshipDiagram(relationships, selectedTables) {
     tableSet.add(`${rel.to_schema}.${rel.to_table}`);
   });
   const tableNames = Array.from(tableSet);
+
+  const columnMap = new Map();
+  columns.forEach((col) => {
+    const key = `${col.schema}.${col.table_name}`;
+    if (!columnMap.has(key)) columnMap.set(key, []);
+    columnMap.get(key).push(col);
+  });
+
+  const fkMap = new Map();
+  relevant.forEach((rel) => {
+    const fromKey = `${rel.from_schema}.${rel.from_table}`;
+    if (!fkMap.has(fromKey)) fkMap.set(fromKey, new Set());
+    fkMap.get(fromKey).add(String(rel.from_column));
+  });
 
   const viewport = document.createElement("div");
   viewport.className = "diagram-viewport";
@@ -287,13 +301,13 @@ function renderRelationshipDiagram(relationships, selectedTables) {
 
   const nodeMap = new Map();
   const positions = new Map();
-  const columns = Math.max(2, Math.ceil(Math.sqrt(tableNames.length)));
-  const horizontalGap = 210;
-  const verticalGap = 120;
+  const layoutColumns = Math.max(2, Math.ceil(Math.sqrt(tableNames.length)));
+  const horizontalGap = 350;
+  const verticalGap = 240;
 
   tableNames.forEach((tableName, index) => {
-    const col = index % columns;
-    const row = Math.floor(index / columns);
+    const col = index % layoutColumns;
+    const row = Math.floor(index / layoutColumns);
 
     positions.set(tableName, { x: 24 + col * horizontalGap, y: 24 + row * verticalGap });
 
@@ -305,11 +319,43 @@ function renderRelationshipDiagram(relationships, selectedTables) {
     const title = document.createElement("strong");
     title.textContent = tableName;
 
-    const subtitle = document.createElement("span");
-    subtitle.className = "muted";
-    subtitle.textContent = selectedSet.has(tableName.toLowerCase()) ? "Selected" : "Related";
+    const columnList = document.createElement("ul");
+    columnList.className = "diagram-column-list";
+    const tableColumns = (columnMap.get(tableName) || []).slice(0, 10);
+    tableColumns.forEach((col) => {
+      const li = document.createElement("li");
+      li.className = "diagram-column-row";
 
-    node.append(title, subtitle);
+      const left = document.createElement("span");
+      left.textContent = `${col.column_name} · ${col.data_type}`;
+
+      const badges = document.createElement("span");
+      badges.className = "diagram-badges";
+      if (String(col.is_primary) === "true" || String(col.is_primary) === "1") {
+        const pk = document.createElement("em");
+        pk.textContent = "PK";
+        pk.className = "badge-pk";
+        badges.appendChild(pk);
+      }
+      if ((fkMap.get(tableName) || new Set()).has(String(col.column_name))) {
+        const fk = document.createElement("em");
+        fk.textContent = "FK";
+        fk.className = "badge-fk";
+        badges.appendChild(fk);
+      }
+
+      li.append(left, badges);
+      columnList.appendChild(li);
+    });
+
+    if ((columnMap.get(tableName) || []).length > tableColumns.length) {
+      const more = document.createElement("li");
+      more.className = "muted";
+      more.textContent = `+${columnMap.get(tableName).length - tableColumns.length} more columns`;
+      columnList.appendChild(more);
+    }
+
+    node.append(title, columnList);
     nodesLayer.appendChild(node);
     nodeMap.set(tableName, node);
   });
@@ -405,8 +451,8 @@ function renderRelationshipDiagram(relationships, selectedTables) {
 
   nodeMap.forEach((node, tableName) => wireDrag(node, tableName));
 
-  const maxWidth = Math.max(900, columns * horizontalGap + 250);
-  const maxHeight = Math.max(420, Math.ceil(tableNames.length / columns) * verticalGap + 220);
+  const maxWidth = Math.max(1100, layoutColumns * horizontalGap + 260);
+  const maxHeight = Math.max(620, Math.ceil(tableNames.length / layoutColumns) * verticalGap + 260);
   nodesLayer.style.width = `${maxWidth}px`;
   nodesLayer.style.height = `${maxHeight}px`;
   svg.setAttribute("viewBox", `0 0 ${maxWidth} ${maxHeight}`);
@@ -421,7 +467,7 @@ function renderRelationshipDiagram(relationships, selectedTables) {
 
   canvas.appendChild(viewport);
   count.textContent = `${tableNames.length} table(s), ${relevant.length} relation(s) • drag nodes to reorganize`;
-  latestDiagramPayload = { generated_at: new Date().toISOString(), tables: tableNames, relationships: relevant };
+  latestDiagramPayload = { generated_at: new Date().toISOString(), tables: tableNames, relationships: relevant, columns };
   document.getElementById("diagram-view-modal").classList.remove("hidden");
 }
 
@@ -434,7 +480,7 @@ async function generateDiagram(connectionId) {
       method: "POST",
       body: JSON.stringify({ tables: checked }),
     });
-    renderRelationshipDiagram(data.relationships || [], checked);
+    renderRelationshipDiagram(data.relationships || [], checked, data.columns || []);
     closeDiagramModal();
     showSuccess("Relationship diagram opened.");
   } catch (err) {

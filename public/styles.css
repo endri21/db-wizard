@@ -492,12 +492,12 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .diagram-header { display: flex; justify-content: space-between; align-items: center; gap: .6rem; margin-bottom: .5rem; }
 .diagram-header h4 { margin: 0; }
 .diagram-canvas { border: 1px dashed #cbd5e1; border-radius: 10px; padding: .7rem; min-height: 220px; background: #fff; overflow: auto; }
-.diagram-viewport { position: relative; min-height: 440px; min-width: 900px; }
+.diagram-viewport { position: relative; min-height: 640px; min-width: 1100px; }
 .diagram-svg { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
 .diagram-nodes { position: relative; z-index: 2; }
 .diagram-node {
   position: absolute;
-  width: 170px;
+  width: 300px;
   border: 1px solid #d1d5db;
   border-radius: 10px;
   background: #ffffff;
@@ -508,7 +508,14 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 }
 .diagram-node.selected { border-color: #60a5fa; background: #f8fbff; }
 .diagram-node.dragging { cursor: grabbing; box-shadow: 0 12px 26px rgba(37, 99, 235, .18); }
-.diagram-node strong { display: block; margin-bottom: .12rem; font-size: .85rem; }
+
+.diagram-node strong { display: block; margin-bottom: .25rem; font-size: .95rem; color: #0f3d91; border-bottom: 1px solid #dbeafe; padding-bottom: .2rem; }
+.diagram-column-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .18rem; max-height: 150px; overflow: auto; }
+.diagram-column-row { display: flex; align-items: center; justify-content: space-between; gap: .45rem; font-size: .8rem; color: #1f2937; }
+.diagram-badges { display: inline-flex; gap: .25rem; }
+.diagram-badges em { font-style: normal; font-size: .68rem; border-radius: 999px; padding: .08rem .35rem; border: 1px solid transparent; }
+.badge-pk { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.badge-fk { background: #ecfeff; color: #0f766e; border-color: #99f6e4; }
 .diagram-edge { stroke: #64748b; stroke-width: 1.6; opacity: .82; }
 .diagram-edge-label { fill: #334155; font-size: 11px; paint-order: stroke; stroke: #ffffff; stroke-width: 3px; }
 .table-picker { max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; padding: .6rem; margin: .55rem 0; display: grid; gap: .4rem; }

@@ -375,6 +375,107 @@ async function listRelationships(conn, selectedTables = []) {
   }
 }
 
+
+async function listTableColumns(conn, tables = []) {
+  const engine = normalizeEngine(conn.engine);
+  const cfg = buildConfig(conn);
+  const selected = new Set((tables || []).map((t) => String(t).toLowerCase()));
+
+  try {
+    if (engine === "postgresql") {
+      const rows = await withPgClient(
+        cfg,
+        async (client) => {
+          const result = await client.query(`
+            SELECT c.table_schema AS schema,
+                   c.table_name AS table_name,
+                   c.column_name,
+                   c.data_type,
+                   c.is_nullable,
+                   EXISTS (
+                     SELECT 1
+                     FROM information_schema.table_constraints tc
+                     JOIN information_schema.key_column_usage kcu
+                       ON tc.constraint_name = kcu.constraint_name
+                      AND tc.table_schema = kcu.table_schema
+                     WHERE tc.constraint_type = 'PRIMARY KEY'
+                       AND tc.table_schema = c.table_schema
+                       AND tc.table_name = c.table_name
+                       AND kcu.column_name = c.column_name
+                   ) AS is_primary
+            FROM information_schema.columns c
+            WHERE c.table_schema NOT IN ('pg_catalog', 'information_schema')
+            ORDER BY c.table_schema, c.table_name, c.ordinal_position
+          `);
+          return result.rows;
+        },
+        { retryOnNoEncryption: true }
+      );
+      return rows.filter((r) => !selected.size || selected.has(`${r.schema}.${r.table_name}`.toLowerCase()));
+    }
+
+    if (engine === "mysql") {
+      const connection = cfg.connectionString
+        ? await mysql.createConnection(cfg.connectionString)
+        : await mysql.createConnection(cfg);
+      const [rows] = await connection.query(`
+        SELECT c.TABLE_SCHEMA AS schema,
+               c.TABLE_NAME AS table_name,
+               c.COLUMN_NAME AS column_name,
+               c.DATA_TYPE AS data_type,
+               c.IS_NULLABLE AS is_nullable,
+               CASE WHEN k.COLUMN_NAME IS NULL THEN 0 ELSE 1 END AS is_primary
+        FROM INFORMATION_SCHEMA.COLUMNS c
+        LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE k
+          ON c.TABLE_SCHEMA = k.TABLE_SCHEMA
+         AND c.TABLE_NAME = k.TABLE_NAME
+         AND c.COLUMN_NAME = k.COLUMN_NAME
+         AND k.CONSTRAINT_NAME = 'PRIMARY'
+        WHERE c.TABLE_SCHEMA NOT IN ('information_schema', 'mysql', 'performance_schema', 'sys')
+        ORDER BY c.TABLE_SCHEMA, c.TABLE_NAME, c.ORDINAL_POSITION
+      `);
+      await connection.end();
+      return rows.filter((r) => !selected.size || selected.has(`${r.schema}.${r.table_name}`.toLowerCase()));
+    }
+
+    if (engine === "mssql") {
+      const pool = await sql.connect(
+        cfg.connectionString
+          ? cfg.connectionString
+          : {
+              server: cfg.host,
+              port: cfg.port,
+              database: cfg.database,
+              user: cfg.user,
+              password: cfg.password,
+              options: { encrypt: false, trustServerCertificate: true },
+            }
+      );
+      const result = await pool.request().query(`
+        SELECT s.name AS schema,
+               t.name AS table_name,
+               c.name AS column_name,
+               ty.name AS data_type,
+               CASE WHEN c.is_nullable = 1 THEN 'YES' ELSE 'NO' END AS is_nullable,
+               CASE WHEN i.is_primary_key = 1 THEN 1 ELSE 0 END AS is_primary
+        FROM sys.tables t
+        JOIN sys.schemas s ON t.schema_id = s.schema_id
+        JOIN sys.columns c ON c.object_id = t.object_id
+        JOIN sys.types ty ON c.user_type_id = ty.user_type_id
+        LEFT JOIN sys.index_columns ic ON ic.object_id = t.object_id AND ic.column_id = c.column_id
+        LEFT JOIN sys.indexes i ON i.object_id = ic.object_id AND i.index_id = ic.index_id AND i.is_primary_key = 1
+        ORDER BY s.name, t.name, c.column_id
+      `);
+      await pool.close();
+      return result.recordset.filter((r) => !selected.size || selected.has(`${r.schema}.${r.table_name}`.toLowerCase()));
+    }
+
+    throw new Error(`Unsupported engine: ${conn.engine}. Supported engines: postgresql, mysql, mssql.`);
+  } catch (err) {
+    rethrowFriendlyConnectionError(err, cfg);
+  }
+}
+
 async function runQuery(conn, query) {
   ensureReadOnlyQuery(query);
   const engine = normalizeEngine(conn.engine);
@@ -434,6 +535,7 @@ async function runQuery(conn, query) {
 module.exports = {
   listTables,
   listRelationships,
+  listTableColumns,
   runQuery,
   // exported for tests
   shouldRetryPgWithSsl,
