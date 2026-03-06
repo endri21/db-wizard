@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Sign In</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="login-simple-page">
+    <main class="login-simple-wrap">
+      <section class="login-simple-card panel">
+        <div class="login-simple-form">
+          <h2>Log In</h2>
+          <p class="muted">Welcome back! Please enter your details.</p>
+
+          <form id="login-form">
+            <label>Email / Username<input name="username" required /></label>
+            <label>Password<input type="password" name="password" required /></label>
+            <button type="submit">Log In</button>
+          </form>
+
+          <div class="auth-links">
+            <span class="muted">Or continue with</span>
+          </div>
+
+          <div>
+            <div id="oauth-buttons" class="oauth-buttons"></div>
+          </div>
+
+          <div class="auth-links" style="margin-top:.9rem;">
+            <span class="muted">Don't have account?</span>
+            <a href="/register">Sign up</a>
+          </div>
+        </div>
+
+        <aside class="login-simple-visual" aria-hidden="true">
+          <div class="visual-badge">DB Wizard</div>
+          <div class="visual-shape"></div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/login.js"></script>
+  </body>
+</html>
