@@ -95,6 +95,16 @@ async function init() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS saved_diagrams (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      connection_id INTEGER NOT NULL REFERENCES db_connections(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      diagram_json JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS max_connections INTEGER NOT NULL DEFAULT 5;
 
@@ -313,6 +323,38 @@ async function deleteConnection(connectionId, userId) {
   return result.rowCount > 0;
 }
 
+
+async function listSavedDiagrams(userId, connectionId) {
+  const { rows } = await getPool().query(
+    `SELECT id, user_id, connection_id, name, diagram_json, created_at, updated_at
+     FROM saved_diagrams
+     WHERE user_id = $1 AND connection_id = $2
+     ORDER BY updated_at DESC, id DESC`,
+    [Number(userId), Number(connectionId)]
+  );
+  return rows;
+}
+
+async function findSavedDiagram(diagramId, connectionId, userId) {
+  const { rows } = await getPool().query(
+    `SELECT id, user_id, connection_id, name, diagram_json, created_at, updated_at
+     FROM saved_diagrams
+     WHERE id = $1 AND connection_id = $2 AND user_id = $3`,
+    [Number(diagramId), Number(connectionId), Number(userId)]
+  );
+  return rows[0] || null;
+}
+
+async function createSavedDiagram({ user_id, connection_id, name, diagram_json }) {
+  const { rows } = await getPool().query(
+    `INSERT INTO saved_diagrams (user_id, connection_id, name, diagram_json)
+     VALUES ($1, $2, $3, $4::jsonb)
+     RETURNING id, user_id, connection_id, name, diagram_json, created_at, updated_at`,
+    [Number(user_id), Number(connection_id), name, JSON.stringify(diagram_json)]
+  );
+  return rows[0];
+}
+
 async function listSavedQueries(userId, connectionId) {
   const { rows } = await getPool().query(
     `SELECT * FROM saved_queries
@@ -375,6 +417,9 @@ module.exports = {
   createConnection,
   updateConnection,
   deleteConnection,
+  listSavedDiagrams,
+  findSavedDiagram,
+  createSavedDiagram,
   listSavedQueries,
   findSavedQuery,
   createSavedQuery,

@@ -671,3 +671,83 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 }
 
 .login-modern-page .auth-shell { width: 100%; max-width: 1320px; margin: 0 auto; }
+
+.app-frame > .app-shell > .app-footer {
+  margin-left: -1rem;
+  margin-right: -1rem;
+  width: calc(100% + 2rem);
+}
+
+
+
+/* Simplified login */
+.login-simple-page {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(900px 380px at 105% -10%, rgba(168,85,247,.25), transparent 65%),
+    radial-gradient(900px 500px at -10% 110%, rgba(139,92,246,.18), transparent 60%),
+    #f4eefe;
+}
+
+.login-simple-wrap {
+  width: min(980px, 95vw);
+  padding: 1rem;
+}
+
+.login-simple-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid #ddd6fe;
+}
+
+.login-simple-form {
+  padding: 2rem 1.9rem;
+  background: #fff;
+}
+
+.login-simple-form h2 {
+  margin: .2rem 0 .25rem;
+}
+
+.login-simple-form .oauth-buttons {
+  justify-content: flex-start;
+}
+
+.login-simple-visual {
+  position: relative;
+  background: linear-gradient(145deg, #d946ef 0%, #8b5cf6 55%, #6366f1 100%);
+  min-height: 520px;
+}
+
+.visual-badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .02em;
+  background: rgba(255,255,255,.18);
+  border: 1px solid rgba(255,255,255,.25);
+  padding: .35rem .65rem;
+  border-radius: 999px;
+}
+
+.visual-shape {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(200px 260px at 68% 70%, rgba(255,255,255,.33), transparent 70%),
+    radial-gradient(150px 190px at 48% 40%, rgba(255,255,255,.22), transparent 68%),
+    linear-gradient(180deg, transparent 0%, rgba(255,255,255,.08) 100%);
+}
+
+@media (max-width: 900px) {
+  .login-simple-card { grid-template-columns: 1fr; }
+  .login-simple-visual { min-height: 220px; }
+}

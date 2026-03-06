@@ -423,6 +423,43 @@ app.post("/api/connections/:id/relationships", requireAuth, async (req, res) => 
   }
 });
 
+app.get("/api/connections/:id/diagrams", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  const diagrams = await store.listSavedDiagrams(req.user.id, req.params.id);
+  res.json(diagrams);
+});
+
+app.post("/api/connections/:id/diagrams", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  const name = String(req.body?.name || "").trim();
+  const diagram_json = req.body?.diagram_json;
+  if (!name) return res.status(400).json({ error: "Diagram name is required." });
+  if (!diagram_json || typeof diagram_json !== "object") {
+    return res.status(400).json({ error: "diagram_json payload is required." });
+  }
+
+  const created = await store.createSavedDiagram({
+    user_id: req.user.id,
+    connection_id: req.params.id,
+    name,
+    diagram_json,
+  });
+  res.status(201).json(created);
+});
+
+app.get("/api/connections/:id/diagrams/:diagramId", requireAuth, async (req, res) => {
+  const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
+  if (!conn) return res.status(404).json({ error: "Connection not found." });
+
+  const diagram = await store.findSavedDiagram(req.params.diagramId, req.params.id, req.user.id);
+  if (!diagram) return res.status(404).json({ error: "Diagram not found." });
+  res.json(diagram);
+});
+
 app.post("/api/connections/:id/query", requireAuth, async (req, res) => {
   const conn = await getOwnedConnection(req.params.id, req.user.id, { includeSecrets: true });
   if (!conn) return res.status(404).json({ error: "Connection not found." });

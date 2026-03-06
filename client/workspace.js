@@ -631,20 +631,50 @@ function closeDiagramViewModal() {
   document.getElementById("diagram-view-modal").classList.add("hidden");
 }
 
-function saveCurrentDiagram() {
+async function saveCurrentDiagram(connectionId) {
   if (!latestDiagramPayload) {
     showError("No diagram to save yet.");
     return;
   }
 
-  const blob = new Blob([JSON.stringify(latestDiagramPayload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `diagram-${Date.now()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showSuccess("Diagram JSON exported.");
+  const defaultName = `Diagram ${new Date().toLocaleString()}`;
+  const name = window.prompt("Diagram name", defaultName);
+  if (!name) return;
+
+  try {
+    await apiRequest(`/api/connections/${connectionId}/diagrams`, {
+      method: "POST",
+      body: JSON.stringify({ name: name.trim(), diagram_json: latestDiagramPayload }),
+    });
+    showSuccess("Diagram saved to database.");
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
+async function loadSavedDiagram(connectionId) {
+  try {
+    const diagrams = await apiRequest(`/api/connections/${connectionId}/diagrams`);
+    if (!diagrams.length) {
+      showError("No saved diagrams for this workspace yet.");
+      return;
+    }
+
+    const menu = diagrams
+      .slice(0, 12)
+      .map((d, i) => `${i + 1}. ${d.name}`)
+      .join("\n");
+    const choice = window.prompt(`Load which diagram?\n${menu}\nEnter number:`);
+    const idx = Number(choice);
+    if (!Number.isFinite(idx) || idx < 1 || idx > diagrams.length) return;
+
+    const selected = await apiRequest(`/api/connections/${connectionId}/diagrams/${diagrams[idx - 1].id}`);
+    const payload = selected.diagram_json || {};
+    renderRelationshipDiagram(payload.relationships || [], payload.tables || [], payload.columns || []);
+    showSuccess("Saved diagram loaded.");
+  } catch (err) {
+    showError(err.message);
+  }
 }
 
 function setupWorkspaceTabs() {
@@ -815,7 +845,8 @@ async function loadSavedQueries(connectionId) {
 
     document.getElementById("diagram-view-close-btn").addEventListener("click", closeDiagramViewModal);
     document.getElementById("diagram-view-dismiss-btn").addEventListener("click", closeDiagramViewModal);
-    document.getElementById("diagram-save-btn").addEventListener("click", saveCurrentDiagram);
+    document.getElementById("diagram-save-btn").addEventListener("click", () => saveCurrentDiagram(connectionId));
+    document.getElementById("diagram-load-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
     document.getElementById("diagram-view-modal").addEventListener("click", (e) => {
       if (e.target.id === "diagram-view-modal") closeDiagramViewModal();
     });
