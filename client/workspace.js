@@ -5,6 +5,7 @@ let schemaTreeCache = [];
 let currentConnection = null;
 let latestDiagramPayload = null;
 let activateWorkspaceTab = null;
+let activateDiagramModalTab = null;
 
 function connectionIdFromPath() {
   const parts = window.location.pathname.split("/").filter(Boolean);
@@ -264,6 +265,7 @@ function renderRelationshipDiagram(relationships, selectedTables, columns = []) 
     count.textContent = `${selectedTables.length} table(s), 0 relation(s)`;
     latestDiagramPayload = { generated_at: new Date().toISOString(), tables: selectedTables, relationships: [], columns };
     document.getElementById("diagram-view-modal").classList.remove("hidden");
+    if (activateDiagramModalTab) activateDiagramModalTab("view");
     return;
   }
 
@@ -469,6 +471,7 @@ function renderRelationshipDiagram(relationships, selectedTables, columns = []) 
   count.textContent = `${tableNames.length} table(s), ${relevant.length} relation(s) • drag nodes to reorganize`;
   latestDiagramPayload = { generated_at: new Date().toISOString(), tables: tableNames, relationships: relevant, columns };
   document.getElementById("diagram-view-modal").classList.remove("hidden");
+  if (activateDiagramModalTab) activateDiagramModalTab("view");
 }
 
 async function generateDiagram(connectionId) {
@@ -631,6 +634,24 @@ function closeDiagramViewModal() {
   document.getElementById("diagram-view-modal").classList.add("hidden");
 }
 
+function setupDiagramModalTabs() {
+  const viewBtn = document.getElementById("diagram-tab-view");
+  const savedBtn = document.getElementById("diagram-tab-saved");
+  const viewPane = document.getElementById("diagram-pane-view");
+  const savedPane = document.getElementById("diagram-pane-saved");
+
+  activateDiagramModalTab = (which) => {
+    const isView = which === "view";
+    viewBtn.classList.toggle("active", isView);
+    savedBtn.classList.toggle("active", !isView);
+    viewPane.classList.toggle("hidden", !isView);
+    savedPane.classList.toggle("hidden", isView);
+  };
+
+  viewBtn.addEventListener("click", () => activateDiagramModalTab("view"));
+  savedBtn.addEventListener("click", () => activateDiagramModalTab("saved"));
+}
+
 function applyDiagramPayload(payload) {
   renderRelationshipDiagram(payload.relationships || [], payload.tables || [], payload.columns || []);
 }
@@ -681,7 +702,12 @@ function renderSavedDiagramList(connectionId, diagrams = []) {
 async function refreshSavedDiagrams(connectionId) {
   try {
     const diagrams = await apiRequest(`/api/connections/${connectionId}/diagrams`);
-    renderSavedDiagramList(connectionId, diagrams);
+    const sortedDiagrams = [...diagrams].sort((a, b) => {
+      const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+      const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+      return bTime - aTime;
+    });
+    renderSavedDiagramList(connectionId, sortedDiagrams);
   } catch (err) {
     showError(err.message);
   }
@@ -712,6 +738,7 @@ async function saveCurrentDiagram(connectionId) {
 async function loadSavedDiagram(connectionId) {
   try {
     await refreshSavedDiagrams(connectionId);
+    if (activateDiagramModalTab) activateDiagramModalTab("saved");
     showSuccess("Saved diagrams list updated.");
   } catch (err) {
     showError(err.message);
@@ -894,6 +921,8 @@ async function loadSavedQueries(connectionId) {
     });
 
     await refreshSavedDiagrams(connectionId);
+    setupDiagramModalTabs();
+    if (activateDiagramModalTab) activateDiagramModalTab("view");
 
     setupWorkspaceTabs();
 

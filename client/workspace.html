@@ -115,17 +115,26 @@
               <button id="diagram-view-dismiss-btn" type="button">Close Without Save</button>
             </div>
           </div>
-          <div id="diagram-modal-canvas" class="diagram-canvas">
-            <p class="muted">Generate a diagram from the database context menu.</p>
+          <div class="diagram-modal-tabs" role="tablist" aria-label="Diagram modal tabs">
+            <button id="diagram-tab-view" class="tab-btn active" type="button">Diagram</button>
+            <button id="diagram-tab-saved" class="tab-btn" type="button">Saved Diagrams</button>
           </div>
-          <div class="saved-diagrams-block">
-            <div class="saved-diagrams-head">
-              <h4>Saved Diagrams</h4>
-              <button id="diagram-refresh-btn" class="secondary btn-small" type="button">Refresh</button>
+          <div id="diagram-pane-view" class="diagram-tab-pane">
+            <div id="diagram-modal-canvas" class="diagram-canvas">
+              <p class="muted">Generate a diagram from the database context menu.</p>
             </div>
-            <ul id="diagram-saved-list" class="saved-diagram-list">
-              <li class="muted">No saved diagrams for this workspace yet.</li>
-            </ul>
+          </div>
+          <div id="diagram-pane-saved" class="diagram-tab-pane hidden">
+            <div class="saved-diagrams-block">
+              <div class="saved-diagrams-head">
+                <h4>Saved Diagrams</h4>
+                <button id="diagram-refresh-btn" class="secondary btn-small" type="button">Refresh</button>
+              </div>
+              <p class="muted saved-diagrams-hint">Newest diagrams appear first.</p>
+              <ul id="diagram-saved-list" class="saved-diagram-list">
+                <li class="muted">No saved diagrams for this workspace yet.</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

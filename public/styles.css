@@ -557,6 +557,8 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .panel-sub { margin-top: .9rem; border: 1px solid var(--line); border-radius: 12px; padding: .8rem; background: #fbfdff; }
 .diagram-header { display: flex; justify-content: space-between; align-items: center; gap: .6rem; margin-bottom: .5rem; }
 .diagram-header h4 { margin: 0; }
+.diagram-modal-tabs { display: flex; gap: .4rem; margin: .2rem 0 .65rem; }
+.diagram-tab-pane.hidden { display: none; }
 .diagram-canvas { border: 1px dashed #cbd5e1; border-radius: 10px; padding: .7rem; min-height: 220px; background: #fff; overflow: auto; }
 .diagram-viewport { position: relative; min-height: 640px; min-width: 1100px; }
 .diagram-svg { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; }
@@ -589,9 +591,10 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .table-picker-item input { width: auto; margin: 0; }
 
 .saved-diagrams-block {
-  border-top: 1px solid var(--line);
-  margin-top: .9rem;
-  padding-top: .7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: .7rem;
+  background: #fff;
 }
 .saved-diagrams-head {
   display: flex;
@@ -601,6 +604,7 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   margin-bottom: .5rem;
 }
 .saved-diagrams-head h4 { margin: 0; font-size: .95rem; }
+.saved-diagrams-hint { margin: 0 0 .45rem; font-size: .8rem; }
 .saved-diagram-list {
   list-style: none;
   margin: 0;
@@ -623,7 +627,7 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 
 
 .app-footer {
-  margin: 1.2rem 0 0;
+  margin: 0;
   width: 100%;
   max-width: none;
   border-radius: 0;
