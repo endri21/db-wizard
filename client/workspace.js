@@ -919,7 +919,6 @@ async function loadSavedQueries(connectionId) {
     document.getElementById("diagram-generate-btn").addEventListener("click", () => generateDiagram(connectionId));
 
     document.getElementById("diagram-view-close-btn").addEventListener("click", closeDiagramViewModal);
-    document.getElementById("diagram-view-dismiss-btn").addEventListener("click", closeDiagramViewModal);
     document.getElementById("diagram-save-btn").addEventListener("click", () => saveCurrentDiagram(connectionId));
     document.getElementById("diagram-load-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
     document.getElementById("diagram-refresh-btn").addEventListener("click", () => refreshSavedDiagrams(connectionId));

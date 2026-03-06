@@ -568,6 +568,16 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   margin-top: 0;
   min-width: 220px;
 }
+.diagram-action-row {
+  width: 100%;
+  align-items: end;
+  justify-content: space-between;
+}
+.diagram-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+}
 .diagram-modal-tabs { display: flex; gap: .4rem; margin: .2rem 0 .65rem; }
 .diagram-tab-pane.hidden { display: none; }
 .diagram-canvas { border: 1px dashed #cbd5e1; border-radius: 10px; padding: .7rem; min-height: 220px; background: #fff; overflow: auto; }

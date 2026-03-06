@@ -109,11 +109,12 @@
           </div>
           <div class="diagram-header">
             <span id="diagram-modal-count" class="muted">No diagram generated yet.</span>
-            <div class="actions-row compact-actions">
+            <div class="actions-row compact-actions diagram-action-row">
               <label class="diagram-name-field">Diagram Name<input id="diagram-name-input" type="text" placeholder="e.g. Orders ERD" /></label>
-              <button id="diagram-save-btn" class="secondary" type="button">Save Diagram</button>
-              <button id="diagram-load-btn" class="secondary" type="button">Load Saved</button>
-              <button id="diagram-view-dismiss-btn" type="button">Close Without Save</button>
+              <div class="diagram-action-buttons">
+                <button id="diagram-save-btn" class="secondary btn-small" type="button">Save Diagram</button>
+                <button id="diagram-load-btn" class="secondary btn-small" type="button">Load Saved</button>
+              </div>
             </div>
           </div>
           <div class="diagram-modal-tabs" role="tablist" aria-label="Diagram modal tabs">
