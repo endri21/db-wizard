@@ -557,6 +557,17 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
 .panel-sub { margin-top: .9rem; border: 1px solid var(--line); border-radius: 12px; padding: .8rem; background: #fbfdff; }
 .diagram-header { display: flex; justify-content: space-between; align-items: center; gap: .6rem; margin-bottom: .5rem; }
 .diagram-header h4 { margin: 0; }
+.diagram-name-field {
+  display: grid;
+  gap: .2rem;
+  font-size: .76rem;
+  color: var(--muted);
+  min-width: 220px;
+}
+.diagram-name-field input {
+  margin-top: 0;
+  min-width: 220px;
+}
 .diagram-modal-tabs { display: flex; gap: .4rem; margin: .2rem 0 .65rem; }
 .diagram-tab-pane.hidden { display: none; }
 .diagram-canvas { border: 1px dashed #cbd5e1; border-radius: 10px; padding: .7rem; min-height: 220px; background: #fff; overflow: auto; }
@@ -693,6 +704,13 @@ th { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
   font-weight: 700;
 }
 .footer-social a:hover { background: rgba(255,255,255,.2); color: #fff; }
+
+/* Keep footer minimal by hiding marketing link/social strips */
+.footer-top-links,
+.footer-copy,
+.footer-social {
+  display: none;
+}
 .footer-bottom {
   text-align: center;
   padding: .52rem .7rem;

@@ -242,6 +242,7 @@ function closeDiagramModal() {
 function renderRelationshipDiagram(relationships, selectedTables, columns = []) {
   const canvas = document.getElementById("diagram-modal-canvas");
   const count = document.getElementById("diagram-modal-count");
+  const nameInput = document.getElementById("diagram-name-input");
   canvas.innerHTML = "";
 
   if (!selectedTables.length) {
@@ -264,6 +265,7 @@ function renderRelationshipDiagram(relationships, selectedTables, columns = []) 
     canvas.appendChild(empty);
     count.textContent = `${selectedTables.length} table(s), 0 relation(s)`;
     latestDiagramPayload = { generated_at: new Date().toISOString(), tables: selectedTables, relationships: [], columns };
+    if (nameInput) nameInput.placeholder = `Diagram ${new Date().toLocaleString()}`;
     document.getElementById("diagram-view-modal").classList.remove("hidden");
     if (activateDiagramModalTab) activateDiagramModalTab("view");
     return;
@@ -470,6 +472,7 @@ function renderRelationshipDiagram(relationships, selectedTables, columns = []) 
   canvas.appendChild(viewport);
   count.textContent = `${tableNames.length} table(s), ${relevant.length} relation(s) • drag nodes to reorganize`;
   latestDiagramPayload = { generated_at: new Date().toISOString(), tables: tableNames, relationships: relevant, columns };
+  if (nameInput) nameInput.placeholder = `Diagram ${new Date().toLocaleString()}`;
   document.getElementById("diagram-view-modal").classList.remove("hidden");
   if (activateDiagramModalTab) activateDiagramModalTab("view");
 }
@@ -719,16 +722,20 @@ async function saveCurrentDiagram(connectionId) {
     return;
   }
 
-  const defaultName = `Diagram ${new Date().toLocaleString()}`;
-  const name = window.prompt("Diagram name", defaultName);
-  if (!name) return;
+  const nameInput = document.getElementById("diagram-name-input");
+  const fallbackName = `Diagram ${new Date().toLocaleString()}`;
+  const name = String(nameInput?.value || "").trim() || fallbackName;
 
   try {
     await apiRequest(`/api/connections/${connectionId}/diagrams`, {
       method: "POST",
-      body: JSON.stringify({ name: name.trim(), diagram_json: latestDiagramPayload }),
+      body: JSON.stringify({ name, diagram_json: latestDiagramPayload }),
     });
     await refreshSavedDiagrams(connectionId);
+    if (nameInput && !String(nameInput.value || "").trim()) {
+      nameInput.value = "";
+      nameInput.placeholder = fallbackName;
+    }
     showSuccess("Diagram saved to database.");
   } catch (err) {
     showError(err.message);
