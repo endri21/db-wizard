@@ -8,9 +8,23 @@
   <body>
     Redirecting to <a href="/">DB Wizard login</a>...
     <footer class="app-footer">
-      © <span id="footer-year"></span> Yagni Technologies · <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a>
+      <div class="footer-top-links">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">About</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Products</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Services</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Help</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Contact</a>
+      </div>
+      <p class="footer-copy">Yagni Technologies builds practical data platforms and tools that keep teams focused on value.</p>
+      <div class="footer-social">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Facebook">f</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Twitter">t</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">in</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="GitHub">gh</a>
+      </div>
+      <div class="footer-bottom">© <span class="footer-year"></span> Copyright: <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a></div>
     </footer>
-    <script>document.getElementById('footer-year') && (document.getElementById('footer-year').textContent = new Date().getFullYear());</script>
+    <script>document.querySelectorAll('.footer-year').forEach((el)=>{el.textContent = new Date().getFullYear();});</script>
 
   </body>
 </html>

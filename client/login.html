@@ -6,17 +6,17 @@
     <title>DB Wizard | Sign In</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
-    <div class="auth-shell auth-shell-split">
+  <body class="login-modern-page">
+    <div class="auth-shell auth-shell-split modern-login-layout">
       <section class="auth-brand-panel panel auth-hero">
         <div class="brand-wrap">
           <div class="brand-badge">DB</div>
           <div>
             <h1>DB Wizard Cloud Portal</h1>
-            <p class="muted">Enterprise data operations cockpit</p>
+            <p class="muted">Modern data workspace for operations teams</p>
           </div>
         </div>
-        <h2>Manage databases like Azure / AWS control planes</h2>
+        <h2>Operate databases with a modern control-plane experience</h2>
         <p class="muted">Unified access, secure query execution, and reusable SQL workflows across environments.</p>
         <ul class="feature-list">
           <li>Connection catalog with PostgreSQL, MySQL, MSSQL support.</li>
@@ -28,11 +28,17 @@
           <span class="chip">Read-only Guard</span>
           <span class="chip">Encrypted Secrets</span>
         </div>
+        <div class="auth-metrics">
+          <div><strong>3</strong><span>Engines</span></div>
+          <div><strong>200</strong><span>Max rows/query</span></div>
+          <div><strong>AES-256</strong><span>Secret protection</span></div>
+        </div>
       </section>
 
-      <section class="auth-form-panel panel auth-signin-card">
+      <section class="auth-form-panel panel auth-signin-card modern-signin-card">
         <h2>Sign in</h2>
         <p class="muted">Continue to your workspace</p>
+        <p class="signin-caption">Secure session with role-aware workspace access.</p>
 
         <form id="login-form">
           <label>Username<input name="username" required /></label>
@@ -55,9 +61,23 @@
     </div>
 
     <footer class="app-footer">
-      © <span id="footer-year"></span> Yagni Technologies · <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a>
+      <div class="footer-top-links">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">About</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Products</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Services</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Help</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Contact</a>
+      </div>
+      <p class="footer-copy">Yagni Technologies builds practical data platforms and tools that keep teams focused on value.</p>
+      <div class="footer-social">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Facebook">f</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Twitter">t</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">in</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="GitHub">gh</a>
+      </div>
+      <div class="footer-bottom">© <span class="footer-year"></span> Copyright: <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a></div>
     </footer>
-    <script>document.getElementById('footer-year') && (document.getElementById('footer-year').textContent = new Date().getFullYear());</script>
+    <script>document.querySelectorAll('.footer-year').forEach((el)=>{el.textContent = new Date().getFullYear();});</script>
 
     <script src="/client/shared.js"></script>
     <script src="/client/login.js"></script>
