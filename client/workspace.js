@@ -631,6 +631,62 @@ function closeDiagramViewModal() {
   document.getElementById("diagram-view-modal").classList.add("hidden");
 }
 
+function applyDiagramPayload(payload) {
+  renderRelationshipDiagram(payload.relationships || [], payload.tables || [], payload.columns || []);
+}
+
+function renderSavedDiagramList(connectionId, diagrams = []) {
+  const list = document.getElementById("diagram-saved-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (!diagrams.length) {
+    const empty = document.createElement("li");
+    empty.className = "muted";
+    empty.textContent = "No saved diagrams for this workspace yet.";
+    list.appendChild(empty);
+    return;
+  }
+
+  diagrams.forEach((diagram) => {
+    const item = document.createElement("li");
+    item.className = "saved-diagram-item";
+
+    const info = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = diagram.name;
+    const date = document.createElement("div");
+    date.className = "muted";
+    date.textContent = `Updated ${new Date(diagram.updated_at || diagram.created_at).toLocaleString()}`;
+    info.append(title, date);
+
+    const loadBtn = document.createElement("button");
+    loadBtn.className = "secondary btn-small";
+    loadBtn.textContent = "Load";
+    loadBtn.addEventListener("click", async () => {
+      try {
+        const selected = await apiRequest(`/api/connections/${connectionId}/diagrams/${diagram.id}`);
+        applyDiagramPayload(selected.diagram_json || {});
+        showSuccess("Saved diagram loaded.");
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+
+    item.append(info, loadBtn);
+    list.appendChild(item);
+  });
+}
+
+async function refreshSavedDiagrams(connectionId) {
+  try {
+    const diagrams = await apiRequest(`/api/connections/${connectionId}/diagrams`);
+    renderSavedDiagramList(connectionId, diagrams);
+  } catch (err) {
+    showError(err.message);
+  }
+}
+
 async function saveCurrentDiagram(connectionId) {
   if (!latestDiagramPayload) {
     showError("No diagram to save yet.");
@@ -646,6 +702,7 @@ async function saveCurrentDiagram(connectionId) {
       method: "POST",
       body: JSON.stringify({ name: name.trim(), diagram_json: latestDiagramPayload }),
     });
+    await refreshSavedDiagrams(connectionId);
     showSuccess("Diagram saved to database.");
   } catch (err) {
     showError(err.message);
@@ -654,24 +711,8 @@ async function saveCurrentDiagram(connectionId) {
 
 async function loadSavedDiagram(connectionId) {
   try {
-    const diagrams = await apiRequest(`/api/connections/${connectionId}/diagrams`);
-    if (!diagrams.length) {
-      showError("No saved diagrams for this workspace yet.");
-      return;
-    }
-
-    const menu = diagrams
-      .slice(0, 12)
-      .map((d, i) => `${i + 1}. ${d.name}`)
-      .join("\n");
-    const choice = window.prompt(`Load which diagram?\n${menu}\nEnter number:`);
-    const idx = Number(choice);
-    if (!Number.isFinite(idx) || idx < 1 || idx > diagrams.length) return;
-
-    const selected = await apiRequest(`/api/connections/${connectionId}/diagrams/${diagrams[idx - 1].id}`);
-    const payload = selected.diagram_json || {};
-    renderRelationshipDiagram(payload.relationships || [], payload.tables || [], payload.columns || []);
-    showSuccess("Saved diagram loaded.");
+    await refreshSavedDiagrams(connectionId);
+    showSuccess("Saved diagrams list updated.");
   } catch (err) {
     showError(err.message);
   }
@@ -847,9 +888,12 @@ async function loadSavedQueries(connectionId) {
     document.getElementById("diagram-view-dismiss-btn").addEventListener("click", closeDiagramViewModal);
     document.getElementById("diagram-save-btn").addEventListener("click", () => saveCurrentDiagram(connectionId));
     document.getElementById("diagram-load-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
+    document.getElementById("diagram-refresh-btn").addEventListener("click", () => refreshSavedDiagrams(connectionId));
     document.getElementById("diagram-view-modal").addEventListener("click", (e) => {
       if (e.target.id === "diagram-view-modal") closeDiagramViewModal();
     });
+
+    await refreshSavedDiagrams(connectionId);
 
     setupWorkspaceTabs();
 
