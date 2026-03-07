@@ -266,6 +266,7 @@ hr { border: none; border-top: 1px solid var(--line); margin: 1rem 0; }
 }
 
 .ide-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .45rem; gap: .55rem; }
+.ide-header-actions { display: inline-flex; align-items: center; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
 
 .ide-tabs {
   display: inline-flex;

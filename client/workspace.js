@@ -744,6 +744,7 @@ async function saveCurrentDiagram(connectionId) {
 
 async function loadSavedDiagram(connectionId) {
   try {
+    document.getElementById("diagram-view-modal").classList.remove("hidden");
     await refreshSavedDiagrams(connectionId);
     if (activateDiagramModalTab) activateDiagramModalTab("saved");
     showSuccess("Saved diagrams list updated.");
@@ -919,6 +920,7 @@ async function loadSavedQueries(connectionId) {
     document.getElementById("diagram-generate-btn").addEventListener("click", () => generateDiagram(connectionId));
 
     document.getElementById("diagram-view-close-btn").addEventListener("click", closeDiagramViewModal);
+    document.getElementById("open-saved-diagrams-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
     document.getElementById("diagram-save-btn").addEventListener("click", () => saveCurrentDiagram(connectionId));
     document.getElementById("diagram-load-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
     document.getElementById("diagram-refresh-btn").addEventListener("click", () => refreshSavedDiagrams(connectionId));
