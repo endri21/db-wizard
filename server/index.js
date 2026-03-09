@@ -155,14 +155,21 @@ app.post("/api/register", async (req, res) => {
   const user = await store.createUser({
     username,
     email,
-    email_verified: false,
+    email_verified: Boolean(inviteToken),
     password_hash: passwordHash,
     provider: "local",
     role,
     max_connections,
   });
 
-  if (inviteToken) await store.deleteUserInviteToken(inviteToken);
+  if (inviteToken) {
+    await store.deleteUserInviteToken(inviteToken);
+    return res.json({
+      message: "Registration successful. Your email is already confirmed. You can sign in now.",
+      delivered: true,
+      confirmation_url: null,
+    });
+  }
 
   const token = crypto.randomBytes(32).toString("hex");
   const expiresHours = Number(process.env.EMAIL_CONFIRM_EXPIRES_HOURS || 24);
@@ -502,6 +509,11 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
   if (!Number.isFinite(targetUserId)) return res.status(400).json({ error: "Invalid user id." });
   if (targetUserId === Number(req.user.id)) {
     return res.status(400).json({ error: "You cannot delete your own account." });
+  }
+
+  const userDbCount = await store.countConnectionsByUserId(targetUserId);
+  if (userDbCount > 0) {
+    return res.status(400).json({ error: "Cannot delete user with existing databases. Remove their databases first." });
   }
 
   const deleted = await store.deleteUserById(targetUserId);

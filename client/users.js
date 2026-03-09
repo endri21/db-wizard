@@ -1,6 +1,7 @@
 let availableRoles = [];
 let usersCache = [];
 let currentUserId = null;
+let pendingDeleteUser = null;
 
 function fillRoleSelect(selectEl, selectedRole) {
   selectEl.innerHTML = "";
@@ -40,6 +41,13 @@ async function withBusy(label, action) {
   }
 }
 
+function setButtonLoading(button, isLoading, idleText, loadingText) {
+  if (!button) return;
+  if (!button.dataset.idleText) button.dataset.idleText = idleText;
+  button.disabled = Boolean(isLoading);
+  button.textContent = isLoading ? loadingText : button.dataset.idleText;
+}
+
 function resetCreateForm() {
   const form = document.getElementById("create-user-form");
   form.reset();
@@ -56,24 +64,48 @@ function openEditUserModal(user) {
   openModal("edit-user-modal");
 }
 
-async function handleDeleteUser(user) {
-  const isSelf = Number(user.id) === Number(currentUserId);
-  if (isSelf) {
+function openDeleteUserModal(user) {
+  if (Number(user.id) === Number(currentUserId)) {
     showError("You cannot delete your own account.");
     return;
   }
 
-  const confirmed = window.confirm(`Delete ${user.username} (${user.email || "no-email"})? This action cannot be undone.`);
-  if (!confirmed) return;
+  pendingDeleteUser = user;
+  const message = document.getElementById("delete-user-message");
+  const hasDbs = Number(user.connection_count || 0) > 0;
+  if (hasDbs) {
+    message.textContent = `${user.username} cannot be deleted yet because they still have ${user.connection_count} database connection(s).`;
+  } else {
+    message.textContent = `Delete ${user.username} (${user.email || "no-email"})?`;
+  }
+
+  const confirmBtn = document.getElementById("confirm-delete-user-btn");
+  confirmBtn.disabled = hasDbs;
+  confirmBtn.title = hasDbs ? "Remove user databases first." : "";
+  openModal("delete-user-modal");
+}
+
+function closeDeleteModal() {
+  pendingDeleteUser = null;
+  closeModal("delete-user-modal");
+}
+
+async function handleDeleteUser() {
+  if (!pendingDeleteUser) return;
+  const confirmBtn = document.getElementById("confirm-delete-user-btn");
 
   try {
+    setButtonLoading(confirmBtn, true, "Delete", "Deleting…");
     await withBusy("Deleting user…", async () => {
-      await apiRequest(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      await apiRequest(`/api/admin/users/${pendingDeleteUser.id}`, { method: "DELETE" });
       await loadAll();
     });
+    closeDeleteModal();
     showSuccess("User deleted.");
   } catch (err) {
     showError(err.message);
+  } finally {
+    setButtonLoading(confirmBtn, false, "Delete", "Deleting…");
   }
 }
 
@@ -99,7 +131,7 @@ function buildRow(user) {
     deleteBtn.disabled = true;
     deleteBtn.title = "You cannot delete your own account.";
   }
-  deleteBtn.addEventListener("click", () => handleDeleteUser(user));
+  deleteBtn.addEventListener("click", () => openDeleteUserModal(user));
 
   actions.appendChild(editBtn);
   actions.appendChild(deleteBtn);
@@ -162,8 +194,16 @@ async function loadAll() {
     if (e.target.id === "edit-user-modal") closeModal("edit-user-modal");
   });
 
+  document.getElementById("close-delete-user-modal-btn").addEventListener("click", closeDeleteModal);
+  document.getElementById("cancel-delete-user-btn").addEventListener("click", closeDeleteModal);
+  document.getElementById("delete-user-modal").addEventListener("click", (e) => {
+    if (e.target.id === "delete-user-modal") closeDeleteModal();
+  });
+  document.getElementById("confirm-delete-user-btn").addEventListener("click", handleDeleteUser);
+
   document.getElementById("create-user-form").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     try {
       const payload = {
         email: document.getElementById("new-email").value,
@@ -171,6 +211,7 @@ async function loadAll() {
         max_connections: Number(document.getElementById("new-max").value),
       };
 
+      setButtonLoading(submitBtn, true, "Send Invite", "Sending…");
       const created = await withBusy("Sending invitation email…", async () => {
         const createdInvite = await apiRequest("/api/admin/invites", {
           method: "POST",
@@ -191,13 +232,17 @@ async function loadAll() {
       }
     } catch (err) {
       showError(err.message);
+    } finally {
+      setButtonLoading(submitBtn, false, "Send Invite", "Sending…");
     }
   });
 
   document.getElementById("edit-user-form").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     try {
       const id = document.getElementById("edit-user-id").value;
+      setButtonLoading(submitBtn, true, "Update User", "Updating…");
       await withBusy("Updating user…", async () => {
         await apiRequest(`/api/admin/users/${id}`, {
           method: "PUT",
@@ -212,6 +257,8 @@ async function loadAll() {
       showSuccess("User updated.");
     } catch (err) {
       showError(err.message);
+    } finally {
+      setButtonLoading(submitBtn, false, "Update User", "Updating…");
     }
   });
 

@@ -27,7 +27,7 @@
       e.preventDefault();
             const form = new FormData(e.target);
       try {
-        await apiRequest("/api/register", {
+        const result = await apiRequest("/api/register", {
           method: "POST",
           body: JSON.stringify({
             username: form.get("username"),
@@ -36,7 +36,7 @@
             invite_token: form.get("invite_token"),
           }),
         });
-        showSuccess("Registration submitted. Check your email and confirm before login.");
+        showSuccess(result?.message || "Registration submitted. Check your email and confirm before login.");
         setTimeout(() => {
           window.location.href = "/";
         }, 1200);

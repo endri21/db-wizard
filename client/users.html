@@ -95,6 +95,22 @@
       </div>
     </div>
 
+    <div id="delete-user-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-user-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="delete-user-modal-title">Delete User</h3>
+          <button id="close-delete-user-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <p id="delete-user-message" class="muted" style="margin:.2rem 0 .8rem;"></p>
+        <p class="warning-text" style="margin-top:0;">This action cannot be undone.</p>
+        <div class="actions-row" style="justify-content:flex-end;">
+          <button id="confirm-delete-user-btn" type="button" class="danger btn-small">Delete</button>
+          <button id="cancel-delete-user-btn" type="button" class="secondary btn-small">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+
     <footer class="app-footer">
       <div class="footer-top-links">
         <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">About</a>
