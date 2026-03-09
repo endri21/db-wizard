@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-frame">
+      <aside class="side-nav">
+        <div class="side-nav-brand">DB Wizard</div>
+        <nav class="side-nav-links">
+          <a class="side-link active" href="/dashboard">Dashboard</a>
+          <a id="users-link" href="/users" class="side-link hidden">Users</a>
+          <a id="roles-link" href="/roles" class="side-link hidden">Roles</a>
+        </nav>
+      </aside>
+
+      <div class="app-shell portal-shell">
+      <header class="app-header portal-header">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>DB Wizard Workspaces</h1>
+            <p class="muted">Manage your database workspaces</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <span id="user-chip" class="chip"></span>
+          <button id="logout-btn" class="secondary">Logout</button>
+        </div>
+      </header>
+
+      <main class="panel portal-content portal-content-full">
+        <div class="portal-section-header section-actions">
+          <div>
+            <h2>Workspace Connections</h2>
+            <p class="muted">Switch between card and table views.</p>
+          </div>
+          <div class="section-tools">
+            <div class="view-toggle" role="group" aria-label="Change view">
+              <button id="view-card-btn" class="secondary" type="button" title="Card view">▦</button>
+              <button id="view-table-btn" class="secondary" type="button" title="Table view">☷</button>
+            </div>
+            <button id="open-connection-modal-btn" class="btn-small">+ Add</button>
+          </div>
+        </div>
+
+        <ul id="connection-card-list" class="resource-grid"></ul>
+
+        <div id="connection-table-wrap" class="table-scroll hidden">
+          <table id="workspace-table" class="workspace-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Engine</th>
+                <th>Host</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="connection-table-body"></tbody>
+          </table>
+        </div>
+      </main>
+      </div>
+    </div>
+
+    <div id="connection-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="connection-modal-title">
+      <div class="modal-card panel">
+        <div class="modal-header">
+          <h2 id="connection-modal-title">Add Database Connection</h2>
+          <button id="close-connection-modal-btn" class="icon-close" aria-label="Close">✕</button>
+        </div>
+
+        <form id="connection-form" class="grid two-col">
+          <label>Connection Name<input name="name" required /></label>
+          <label>Engine
+            <select name="engine" required>
+              <option value="postgresql">PostgreSQL</option>
+              <option value="mysql">MySQL</option>
+              <option value="mssql">MSSQL</option>
+            </select>
+          </label>
+          <label class="full">Connection String<input name="connection_string" placeholder="postgresql://user:pass@host:5432/db" /></label>
+          <p class="full muted">Or use server fields below.</p>
+          <label>Server<input name="server" /></label>
+          <label>Port<input name="port" /></label>
+          <label>Database<input name="database_name" /></label>
+          <label>DB Username<input name="db_username" /></label>
+          <label class="full">DB Password<input type="password" name="db_password" placeholder="Leave blank to keep existing password when editing" /></label>
+          <div class="full actions-row">
+            <button id="test-connection-btn" type="button" class="secondary">Test Connection</button>
+            <button id="connection-submit-btn" type="submit">Save Connection</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+    <div id="delete-confirm-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h2 id="delete-confirm-title">Delete Workspace</h2>
+          <button id="close-delete-modal-btn" class="icon-close" aria-label="Close">✕</button>
+        </div>
+        <p class="warning-text">⚠️ This action cannot be undone.</p>
+        <p id="delete-confirm-message" class="muted"></p>
+        <div class="actions-row">
+          <button id="cancel-delete-btn" type="button" class="secondary">Cancel</button>
+          <button id="confirm-delete-btn" type="button" class="danger">Delete Workspace</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <div class="footer-top-links">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">About</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Products</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Services</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Help</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Contact</a>
+      </div>
+      <p class="footer-copy">Yagni Technologies builds practical data platforms and tools that keep teams focused on value.</p>
+      <div class="footer-social">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Facebook">f</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Twitter">t</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">in</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="GitHub">gh</a>
+      </div>
+      <div class="footer-bottom">© <span class="footer-year"></span> Copyright: <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a></div>
+    </footer>
+    <script>document.querySelectorAll('.footer-year').forEach((el)=>{el.textContent = new Date().getFullYear();});</script>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/dashboard.js"></script>
+  </body>
+</html>
