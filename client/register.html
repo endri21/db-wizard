@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Register</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="auth-shell">
+      <section class="auth-form-panel panel auth-single-card">
+        <div class="brand-wrap">
+          <div class="brand-badge">DB</div>
+          <div>
+            <h1>Create Workspace Account</h1>
+            <p class="muted">Provision your portal identity</p>
+          </div>
+        </div>
+
+        <form id="register-form">
+          <input id="invite-token" type="hidden" name="invite_token" />
+          <label>Username<input name="username" required /></label>
+          <label>Email<input type="email" name="email" required /></label>
+          <label>Password<input type="password" name="password" required /></label>
+          <button type="submit">Create Account</button>
+        </form>
+
+        <div class="auth-links">
+          <span class="muted">Already have access?</span>
+          <a href="/">Back to sign in</a>
+        </div>
+      </section>
+    </div>
+
+    <footer class="app-footer">
+      <div class="footer-top-links">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">About</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Products</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Services</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Help</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Contact</a>
+      </div>
+      <p class="footer-copy">Yagni Technologies builds practical data platforms and tools that keep teams focused on value.</p>
+      <div class="footer-social">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Facebook">f</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Twitter">t</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">in</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="GitHub">gh</a>
+      </div>
+      <div class="footer-bottom">© <span class="footer-year"></span> Copyright: <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a></div>
+    </footer>
+    <script>document.querySelectorAll('.footer-year').forEach((el)=>{el.textContent = new Date().getFullYear();});</script>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/register.js"></script>
+  </body>
+</html>
