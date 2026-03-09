@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DB Wizard | Users</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-frame">
+      <aside class="side-nav">
+        <div class="side-nav-brand">DB Wizard</div>
+        <nav class="side-nav-links">
+          <a class="side-link" href="/dashboard">Dashboard</a>
+          <a class="side-link active" href="/users">Users</a>
+          <a class="side-link" href="/roles">Roles</a>
+        </nav>
+      </aside>
+
+      <div class="app-shell portal-shell">
+        <header class="app-header portal-header">
+          <div class="brand-wrap">
+            <div class="brand-badge">DB</div>
+            <div>
+              <h1>User Management</h1>
+              <p class="muted">Create users and set role + max DB workspaces</p>
+            </div>
+          </div>
+          <div class="header-actions">
+            <span id="user-chip" class="chip"></span>
+            <button id="logout-btn" class="secondary">Logout</button>
+          </div>
+        </header>
+
+        <main class="panel portal-content portal-content-full">
+          <div id="users-loading" class="loading-overlay hidden" aria-live="polite">
+            <div class="spinner"></div>
+            <span>Processing request…</span>
+          </div>
+          <p id="forbidden-text" class="warning-text hidden">Admin access required to manage users.</p>
+          <div id="users-panel" class="hidden">
+            <div class="portal-section-header section-actions" style="margin-bottom:.55rem;">
+              <div></div>
+              <button id="open-create-user-modal-btn" type="button" class="btn-small">+ Invite User</button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Username</th><th>Email</th><th>Provider</th><th>Role</th><th>Current DBs</th><th>Max DBs</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="users-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div id="create-user-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="create-user-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="create-user-modal-title">Invite User</h3>
+          <button id="close-create-user-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="create-user-form" class="grid" style="gap:.6rem;">
+          <label>Email<input id="new-email" type="email" placeholder="user@company.com" required /></label>
+          <label>Role<select id="new-role" required></select></label>
+          <label>Max DBs<input id="new-max" type="number" min="1" max="200" value="5" required /></label>
+          <p class="muted" style="margin:0;">An invite link will be emailed and expires in 30 minutes.</p>
+          <div class="actions-row">
+            <button type="submit">Send Invite</button>
+            <button id="cancel-create-user-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="edit-user-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-user-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="edit-user-modal-title">Edit User</h3>
+          <button id="close-edit-user-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <form id="edit-user-form" class="grid" style="gap:.6rem;">
+          <input id="edit-user-id" type="hidden" />
+          <label>Username<input id="edit-username" readonly /></label>
+          <label>Provider<input id="edit-provider" readonly /></label>
+          <label>Role<select id="edit-role" required></select></label>
+          <label>Max DBs<input id="edit-max" type="number" min="1" max="200" required /></label>
+          <div class="actions-row">
+            <button type="submit">Update User</button>
+            <button id="cancel-edit-user-btn" type="button" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="delete-user-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-user-modal-title">
+      <div class="modal-card panel confirm-modal">
+        <div class="modal-header">
+          <h3 id="delete-user-modal-title">Delete User</h3>
+          <button id="close-delete-user-modal-btn" class="icon-close" type="button" aria-label="Close">✕</button>
+        </div>
+        <p id="delete-user-message" class="muted" style="margin:.2rem 0 .8rem;"></p>
+        <p class="warning-text" style="margin-top:0;">This action cannot be undone.</p>
+        <div class="actions-row" style="justify-content:flex-end;">
+          <button id="confirm-delete-user-btn" type="button" class="danger btn-small">Delete</button>
+          <button id="cancel-delete-user-btn" type="button" class="secondary btn-small">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+
+    <footer class="app-footer">
+      <div class="footer-top-links">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">About</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Products</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Services</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Help</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">Contact</a>
+      </div>
+      <p class="footer-copy">Yagni Technologies builds practical data platforms and tools that keep teams focused on value.</p>
+      <div class="footer-social">
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Facebook">f</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="Twitter">t</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">in</a>
+        <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer" aria-label="GitHub">gh</a>
+      </div>
+      <div class="footer-bottom">© <span class="footer-year"></span> Copyright: <a href="https://yagni.pro" target="_blank" rel="noopener noreferrer">yagni.pro</a></div>
+    </footer>
+    <script>document.querySelectorAll('.footer-year').forEach((el)=>{el.textContent = new Date().getFullYear();});</script>
+
+    <script src="/client/shared.js"></script>
+    <script src="/client/users.js"></script>
+  </body>
+</html>
