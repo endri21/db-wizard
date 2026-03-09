@@ -4,21 +4,24 @@ const bcrypt = require("bcryptjs");
 const { Pool } = require("pg");
 const store = require("./store");
 
-const connectionString =
-  process.env.APP_DATABASE_URL ||
-  process.env.DATABASE_URL ||
-  "postgresql://postgres:postgres@localhost:5432/db_wizard";
+function resolveConnectionString() {
+  return (
+    process.env.APP_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    "postgresql://postgres:postgres@localhost:5432/db_wizard"
+  );
+}
 
-const sslMode = String(process.env.APP_DATABASE_SSLMODE || "").toLowerCase();
-const sslEnabled = ["require", "verify-ca", "verify-full", "true", "1"].includes(sslMode);
-const ssl = sslEnabled
-  ? {
-      rejectUnauthorized:
-        String(process.env.APP_DATABASE_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true",
-    }
-  : undefined;
+function resolveSslConfig() {
+  const sslMode = String(process.env.APP_DATABASE_SSLMODE || "").toLowerCase();
+  const sslEnabled = ["require", "verify-ca", "verify-full", "true", "1"].includes(sslMode);
+  if (!sslEnabled) return undefined;
 
-const pool = new Pool({ connectionString, ssl });
+  return {
+    rejectUnauthorized:
+      String(process.env.APP_DATABASE_SSL_REJECT_UNAUTHORIZED || "false").toLowerCase() === "true",
+  };
+}
 
 function defaultSeedUsers() {
   return [
@@ -56,7 +59,7 @@ function readSeedUsers() {
   }
 }
 
-async function upsertLocalUser(user) {
+async function upsertLocalUser(pool, user) {
   const username = String(user.username || "").trim();
   const password = String(user.password || "").trim();
   const role = String(user.role || "user").trim().toLowerCase();
@@ -84,71 +87,85 @@ async function upsertLocalUser(user) {
   };
 }
 
-async function seed() {
-  await store.init();
+async function runSeed({ silent = false } = {}) {
+  const pool = new Pool({ connectionString: resolveConnectionString(), ssl: resolveSslConfig() });
 
-  const roleSet = new Set(["admin", "user"]);
-  for (const userSpec of readSeedUsers()) {
-    if (userSpec?.role) roleSet.add(String(userSpec.role).trim().toLowerCase());
-  }
-  for (const roleName of roleSet) {
-    if (roleName) await store.createRole(roleName);
-  }
+  try {
+    await store.init();
 
-  const seededUsers = [];
-  for (const userSpec of readSeedUsers()) {
-    const seeded = await upsertLocalUser(userSpec);
-    if (seeded) seededUsers.push(seeded);
-  }
+    const roleSet = new Set(["admin", "user", "basic"]);
+    for (const userSpec of readSeedUsers()) {
+      if (userSpec?.role) roleSet.add(String(userSpec.role).trim().toLowerCase());
+    }
+    for (const roleName of roleSet) {
+      if (roleName) await store.createRole(roleName);
+    }
 
-  if (!seededUsers.length) {
-    throw new Error("No valid seed users were provided. Check SEED_USERS_JSON or default SEED_* env vars.");
-  }
+    const seededUsers = [];
+    for (const userSpec of readSeedUsers()) {
+      const seeded = await upsertLocalUser(pool, userSpec);
+      if (seeded) seededUsers.push(seeded);
+    }
 
-  const adminUser = seededUsers.find((u) => u.role === "admin") || seededUsers[0];
+    if (!seededUsers.length) {
+      throw new Error("No valid seed users were provided. Check SEED_USERS_JSON or default SEED_* env vars.");
+    }
 
-  const existingConn = await pool.query(
-    `SELECT id FROM db_connections WHERE user_id = $1 AND name = $2 LIMIT 1`,
-    [adminUser.id, "Demo PostgreSQL"]
-  );
+    const adminUser = seededUsers.find((u) => u.role === "admin") || seededUsers[0];
+    const connectionString = resolveConnectionString();
 
-  let connectionId;
-  if (existingConn.rows[0]) {
-    connectionId = existingConn.rows[0].id;
-  } else {
-    const connResult = await pool.query(
-      `INSERT INTO db_connections (user_id, name, engine, connection_string)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [adminUser.id, "Demo PostgreSQL", "postgresql", connectionString]
+    const existingConn = await pool.query(
+      `SELECT id FROM db_connections WHERE user_id = $1 AND name = $2 LIMIT 1`,
+      [adminUser.id, "Demo PostgreSQL"]
     );
-    connectionId = connResult.rows[0].id;
-  }
 
-  const existingQuery = await pool.query(
-    `SELECT id FROM saved_queries WHERE user_id = $1 AND connection_id = $2 AND name = $3 LIMIT 1`,
-    [adminUser.id, connectionId, "Health Check"]
-  );
+    let connectionId;
+    if (existingConn.rows[0]) {
+      connectionId = existingConn.rows[0].id;
+    } else {
+      const connResult = await pool.query(
+        `INSERT INTO db_connections (user_id, name, engine, connection_string)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id`,
+        [adminUser.id, "Demo PostgreSQL", "postgresql", connectionString]
+      );
+      connectionId = connResult.rows[0].id;
+    }
 
-  if (!existingQuery.rows[0]) {
-    await pool.query(
-      `INSERT INTO saved_queries (user_id, connection_id, name, sql_text)
-       VALUES ($1, $2, $3, $4)`,
-      [adminUser.id, connectionId, "Health Check", "SELECT NOW() AS server_time;"]
+    const existingQuery = await pool.query(
+      `SELECT id FROM saved_queries WHERE user_id = $1 AND connection_id = $2 AND name = $3 LIMIT 1`,
+      [adminUser.id, connectionId, "Health Check"]
     );
-  }
 
-  console.log("Seed completed successfully.");
-  seededUsers.forEach((u) => {
-    console.log(`Seeded user: ${u.username} | role=${u.role} | max_connections=${u.max_connections} | password=${u.plain_password}`);
-  });
+    if (!existingQuery.rows[0]) {
+      await pool.query(
+        `INSERT INTO saved_queries (user_id, connection_id, name, sql_text)
+         VALUES ($1, $2, $3, $4)`,
+        [adminUser.id, connectionId, "Health Check", "SELECT NOW() AS server_time;"]
+      );
+    }
+
+    if (!silent) {
+      console.log("Seed completed successfully.");
+      seededUsers.forEach((u) => {
+        console.log(
+          `Seeded user: ${u.username} | role=${u.role} | max_connections=${u.max_connections} | password=${u.plain_password}`
+        );
+      });
+    }
+
+    return { seededUsersCount: seededUsers.length };
+  } finally {
+    await pool.end();
+  }
 }
 
-seed()
-  .catch((err) => {
-    console.error("Seed failed:", err);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await pool.end();
-  });
+if (require.main === module) {
+  runSeed()
+    .catch((err) => {
+      console.error("Seed failed:", err);
+      process.exitCode = 1;
+    });
+}
+
+module.exports = { runSeed };

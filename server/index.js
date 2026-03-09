@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const path = require("path");
+const crypto = require("crypto");
 const express = require("express");
 const session = require("express-session");
 const bcrypt = require("bcryptjs");
@@ -9,6 +10,8 @@ const cors = require("cors");
 const store = require("./store");
 const { listTables, listRelationships, listTableColumns, runQuery } = require("./dbClients");
 const { ensureReadOnlyQuery } = require("./queryGuard");
+const { sendInviteEmail, sendEmailConfirmation } = require("./mailer");
+const { runSeed } = require("./seed");
 const { configurePassport, passport } = require("./auth");
 
 const app = express();
@@ -74,6 +77,14 @@ app.get("/register", (_req, res) => {
   res.sendFile(path.join(__dirname, "..", "client", "register.html"));
 });
 
+app.get("/set-password", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "client", "set-password.html"));
+});
+
+app.get("/confirm-email", (_req, res) => {
+  res.sendFile(path.join(__dirname, "..", "client", "confirm-email.html"));
+});
+
 function requireAuthPage(req, res, next) {
   if (!req.user) {
     return res.redirect("/");
@@ -110,18 +121,45 @@ app.get("/api/auth/providers", (_req, res) => {
 });
 
 app.post("/api/register", async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required." });
+  const username = String(req.body?.username || "").trim();
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "").trim();
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: "Username, email, and password are required." });
   }
 
   if (await findUserByUsername(username)) {
     return res.status(400).json({ error: "Username already exists." });
   }
+  if (!(await store.roleExists("basic"))) {
+    return res.status(500).json({ error: "Default basic role is missing." });
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await store.createUser({ username, password_hash: passwordHash, provider: "local" });
-  return res.json({ message: "Registration successful." });
+  const user = await store.createUser({
+    username,
+    email,
+    email_verified: false,
+    password_hash: passwordHash,
+    provider: "local",
+    role: "basic",
+    max_connections: 2,
+  });
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresHours = Number(process.env.EMAIL_CONFIRM_EXPIRES_HOURS || 24);
+  const expiresAt = new Date(Date.now() + Math.max(1, expiresHours) * 60 * 60 * 1000);
+  await store.createEmailConfirmToken({ token, user_id: user.id, expires_at: expiresAt.toISOString() });
+
+  const baseUrl = String(process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+  const confirmUrl = `${baseUrl}/confirm-email?token=${encodeURIComponent(token)}`;
+  const delivery = await sendEmailConfirmation({ to: email, username, confirmUrl, expiresHours });
+
+  return res.json({
+    message: "Registration successful. Please confirm your email before login.",
+    delivered: Boolean(delivery?.delivered),
+    confirmation_url: confirmUrl,
+  });
 });
 
 app.post("/api/login", async (req, res) => {
@@ -129,6 +167,9 @@ app.post("/api/login", async (req, res) => {
   const user = await findUserByUsername(username);
   if (!user || !user.password_hash) {
     return res.status(401).json({ error: "Invalid credentials." });
+  }
+  if (user.email && !user.email_verified) {
+    return res.status(403).json({ error: "Please confirm your email before signing in." });
   }
 
   const ok = await bcrypt.compare(password, user.password_hash);
@@ -265,11 +306,16 @@ app.get("/api/admin/users", requireAdmin, async (_req, res) => {
 app.post("/api/admin/users", requireAdmin, async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const password = String(req.body?.password || "").trim();
+  const email = String(req.body?.email || "").trim().toLowerCase();
   const role = String(req.body?.role || "user").trim().toLowerCase();
   const max_connections = Number(req.body?.max_connections || 5);
+  const shouldSendInvite = req.body?.send_invite !== false;
 
-  if (!username || !password) {
-    return res.status(400).json({ error: "Username and password are required." });
+  if (!username) {
+    return res.status(400).json({ error: "Username is required." });
+  }
+  if (!password && !email) {
+    return res.status(400).json({ error: "Provide password or email for invite flow." });
   }
   if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
     return res.status(400).json({ error: "max_connections must be between 1 and 200." });
@@ -281,22 +327,108 @@ app.post("/api/admin/users", requireAdmin, async (req, res) => {
     return res.status(400).json({ error: "Selected role does not exist." });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const passwordHash = password ? await bcrypt.hash(password, 10) : null;
   const user = await store.createUser({
     username,
+    email: email || null,
     password_hash: passwordHash,
     provider: "local",
     role,
     max_connections,
   });
 
+  let invitation = null;
+  if (!password && email && shouldSendInvite) {
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresHours = Number(process.env.PASSWORD_SETUP_EXPIRES_HOURS || 24);
+    const expiresAt = new Date(Date.now() + Math.max(1, expiresHours) * 60 * 60 * 1000);
+    await store.createPasswordSetupToken({ token, user_id: user.id, expires_at: expiresAt.toISOString() });
+
+    const baseUrl = String(process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+    const setupUrl = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;
+    const delivery = await sendInviteEmail({ to: email, username, setupUrl, expiresHours });
+    invitation = {
+      setup_url: setupUrl,
+      expires_at: expiresAt.toISOString(),
+      delivered: Boolean(delivery?.delivered),
+      reason: delivery?.reason || null,
+    };
+  }
+
   res.status(201).json({
     id: user.id,
     username: user.username,
+    email: user.email,
     provider: user.provider,
     role: user.role,
     max_connections: user.max_connections,
+    invitation,
   });
+});
+
+app.post("/api/password-setup/validate", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Token is required." });
+
+  const row = await store.findPasswordSetupToken(token);
+  if (!row) return res.status(404).json({ error: "Invalid or expired link." });
+
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    await store.deletePasswordSetupToken(token);
+    return res.status(410).json({ error: "This link has expired." });
+  }
+
+  return res.json({ username: row.username, email: row.email });
+});
+
+app.post("/api/password-setup/complete", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  const password = String(req.body?.password || "").trim();
+  if (!token || !password) {
+    return res.status(400).json({ error: "Token and password are required." });
+  }
+
+  const row = await store.findPasswordSetupToken(token);
+  if (!row) return res.status(404).json({ error: "Invalid or expired link." });
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    await store.deletePasswordSetupToken(token);
+    return res.status(410).json({ error: "This link has expired." });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await store.updateUserPassword(row.user_id, passwordHash);
+  await store.deletePasswordSetupToken(token);
+  return res.json({ message: "Password set successfully. You can now sign in." });
+});
+
+app.post("/api/email-confirm/validate", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Token is required." });
+
+  const row = await store.findEmailConfirmToken(token);
+  if (!row) return res.status(404).json({ error: "Invalid or expired confirmation link." });
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    await store.deleteEmailConfirmToken(token);
+    return res.status(410).json({ error: "This confirmation link has expired." });
+  }
+
+  return res.json({ username: row.username, email: row.email });
+});
+
+app.post("/api/email-confirm/complete", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Token is required." });
+
+  const row = await store.findEmailConfirmToken(token);
+  if (!row) return res.status(404).json({ error: "Invalid or expired confirmation link." });
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    await store.deleteEmailConfirmToken(token);
+    return res.status(410).json({ error: "This confirmation link has expired." });
+  }
+
+  await store.verifyUserEmail(row.user_id);
+  await store.deleteEmailConfirmToken(token);
+  return res.json({ message: "Email confirmed successfully. You can now sign in." });
 });
 
 app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
@@ -550,6 +682,15 @@ app.post("/api/connections/:id/saved-queries/:queryId/run", requireAuth, async (
 
 async function start() {
   await store.init();
+
+  const shouldSeedOnStartup = ["true", "1", "yes"].includes(
+    String(process.env.SEED_ON_STARTUP || process.env.RUN_DB_SEED || "false").toLowerCase()
+  );
+  if (shouldSeedOnStartup) {
+    console.log("SEED_ON_STARTUP enabled. Running seed before server start...");
+    await runSeed({ silent: false });
+  }
+
   app.listen(PORT, () => {
     console.log(`DB Wizard running on http://localhost:${PORT}`);
   });

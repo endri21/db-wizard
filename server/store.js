@@ -58,6 +58,8 @@ async function init() {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
+      email TEXT,
+      email_verified BOOLEAN NOT NULL DEFAULT false,
       password_hash TEXT,
       provider TEXT NOT NULL DEFAULT 'local',
       provider_id TEXT,
@@ -105,11 +107,28 @@ async function init() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS password_setup_tokens (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS email_confirm_tokens (
+      token TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS max_connections INTEGER NOT NULL DEFAULT 5;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;
 
     INSERT INTO roles (name) VALUES ('admin') ON CONFLICT (name) DO NOTHING;
     INSERT INTO roles (name) VALUES ('user') ON CONFLICT (name) DO NOTHING;
+    INSERT INTO roles (name) VALUES ('basic') ON CONFLICT (name) DO NOTHING;
   `);
 }
 
@@ -128,12 +147,12 @@ async function findUserByProvider(provider, providerId) {
   return rows[0] || null;
 }
 
-async function createUser({ username, password_hash = null, provider = "local", provider_id = null, role = "user", max_connections = 5 }) {
+async function createUser({ username, email = null, email_verified = false, password_hash = null, provider = "local", provider_id = null, role = "user", max_connections = 5 }) {
   const { rows } = await getPool().query(
-    `INSERT INTO users (username, password_hash, provider, provider_id, role, max_connections)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO users (username, email, email_verified, password_hash, provider, provider_id, role, max_connections)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      RETURNING *`,
-    [username, password_hash, provider, provider_id, String(role || "user").toLowerCase(), Number(max_connections)]
+    [username, email, Boolean(email_verified), password_hash, provider, provider_id, String(role || "user").toLowerCase(), Number(max_connections)]
   );
   return rows[0];
 }
@@ -232,7 +251,7 @@ async function countConnectionsByUserId(userId) {
 
 async function listUsersForAdmin() {
   const { rows } = await getPool().query(
-    `SELECT u.id, u.username, u.provider, u.role, u.max_connections, u.created_at,
+    `SELECT u.id, u.username, u.email, u.provider, u.role, u.max_connections, u.created_at,
             COUNT(c.id)::int AS connection_count
      FROM users u
      LEFT JOIN db_connections c ON c.user_id = u.id
@@ -250,6 +269,72 @@ async function updateUserAdmin(userId, { role, max_connections }) {
      WHERE id = $3
      RETURNING id, username, provider, role, max_connections, created_at`,
     [String(role || "user").toLowerCase(), Number(max_connections), Number(userId)]
+  );
+  return rows[0] || null;
+}
+
+async function updateUserPassword(userId, password_hash) {
+  const { rows } = await getPool().query(
+    `UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id, username, email, provider, role, max_connections, created_at`,
+    [password_hash, Number(userId)]
+  );
+  return rows[0] || null;
+}
+
+async function createPasswordSetupToken({ token, user_id, expires_at }) {
+  const { rows } = await getPool().query(
+    `INSERT INTO password_setup_tokens (token, user_id, expires_at)
+     VALUES ($1, $2, $3)
+     RETURNING token, user_id, expires_at, created_at`,
+    [token, Number(user_id), expires_at]
+  );
+  return rows[0] || null;
+}
+
+async function findPasswordSetupToken(token) {
+  const { rows } = await getPool().query(
+    `SELECT t.token, t.user_id, t.expires_at, u.username, u.email
+     FROM password_setup_tokens t
+     JOIN users u ON u.id = t.user_id
+     WHERE t.token = $1`,
+    [token]
+  );
+  return rows[0] || null;
+}
+
+async function deletePasswordSetupToken(token) {
+  await getPool().query("DELETE FROM password_setup_tokens WHERE token = $1", [token]);
+}
+
+async function createEmailConfirmToken({ token, user_id, expires_at }) {
+  const { rows } = await getPool().query(
+    `INSERT INTO email_confirm_tokens (token, user_id, expires_at)
+     VALUES ($1, $2, $3)
+     RETURNING token, user_id, expires_at, created_at`,
+    [token, Number(user_id), expires_at]
+  );
+  return rows[0] || null;
+}
+
+async function findEmailConfirmToken(token) {
+  const { rows } = await getPool().query(
+    `SELECT t.token, t.user_id, t.expires_at, u.username, u.email
+     FROM email_confirm_tokens t
+     JOIN users u ON u.id = t.user_id
+     WHERE t.token = $1`,
+    [token]
+  );
+  return rows[0] || null;
+}
+
+async function deleteEmailConfirmToken(token) {
+  await getPool().query("DELETE FROM email_confirm_tokens WHERE token = $1", [token]);
+}
+
+async function verifyUserEmail(userId) {
+  const { rows } = await getPool().query(
+    `UPDATE users SET email_verified = true WHERE id = $1 RETURNING id, username, email, email_verified`,
+    [Number(userId)]
   );
   return rows[0] || null;
 }
@@ -427,4 +512,12 @@ module.exports = {
   deleteSavedQuery,
   listUsersForAdmin,
   updateUserAdmin,
+  updateUserPassword,
+  createPasswordSetupToken,
+  findPasswordSetupToken,
+  deletePasswordSetupToken,
+  createEmailConfirmToken,
+  findEmailConfirmToken,
+  deleteEmailConfirmToken,
+  verifyUserEmail,
 };

@@ -659,8 +659,8 @@ function applyDiagramPayload(payload) {
   renderRelationshipDiagram(payload.relationships || [], payload.tables || [], payload.columns || []);
 }
 
-function renderSavedDiagramList(connectionId, diagrams = []) {
-  const list = document.getElementById("diagram-saved-list");
+function renderSavedDiagramList(connectionId, diagrams = [], listId = "diagram-saved-list") {
+  const list = document.getElementById(listId);
   if (!list) return;
   list.innerHTML = "";
 
@@ -710,7 +710,8 @@ async function refreshSavedDiagrams(connectionId) {
       const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
       return bTime - aTime;
     });
-    renderSavedDiagramList(connectionId, sortedDiagrams);
+    renderSavedDiagramList(connectionId, sortedDiagrams, "diagram-saved-list");
+    renderSavedDiagramList(connectionId, sortedDiagrams, "saved-diagram-list-inline");
   } catch (err) {
     showError(err.message);
   }
@@ -756,19 +757,26 @@ async function loadSavedDiagram(connectionId) {
 function setupWorkspaceTabs() {
   const sqlBtn = document.getElementById("tab-sql");
   const savedBtn = document.getElementById("tab-saved");
+  const diagramsBtn = document.getElementById("tab-diagrams");
   const sqlPane = document.getElementById("pane-sql");
   const savedPane = document.getElementById("pane-saved");
+  const diagramsPane = document.getElementById("pane-diagrams");
 
   activateWorkspaceTab = (which) => {
     const sqlActive = which === "sql";
+    const savedActive = which === "saved";
+    const diagramsActive = which === "diagrams";
     sqlBtn.classList.toggle("active", sqlActive);
-    savedBtn.classList.toggle("active", !sqlActive);
+    savedBtn.classList.toggle("active", savedActive);
+    diagramsBtn.classList.toggle("active", diagramsActive);
     sqlPane.classList.toggle("hidden", !sqlActive);
-    savedPane.classList.toggle("hidden", sqlActive);
+    savedPane.classList.toggle("hidden", !savedActive);
+    diagramsPane.classList.toggle("hidden", !diagramsActive);
   };
 
   sqlBtn.addEventListener("click", () => activateWorkspaceTab("sql"));
   savedBtn.addEventListener("click", () => activateWorkspaceTab("saved"));
+  diagramsBtn.addEventListener("click", () => activateWorkspaceTab("diagrams"));
 }
 
 async function loadSchemas(connection) {
@@ -920,10 +928,10 @@ async function loadSavedQueries(connectionId) {
     document.getElementById("diagram-generate-btn").addEventListener("click", () => generateDiagram(connectionId));
 
     document.getElementById("diagram-view-close-btn").addEventListener("click", closeDiagramViewModal);
-    document.getElementById("open-saved-diagrams-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
     document.getElementById("diagram-save-btn").addEventListener("click", () => saveCurrentDiagram(connectionId));
     document.getElementById("diagram-load-btn").addEventListener("click", () => loadSavedDiagram(connectionId));
     document.getElementById("diagram-refresh-btn").addEventListener("click", () => refreshSavedDiagrams(connectionId));
+    document.getElementById("workspace-refresh-diagrams-btn").addEventListener("click", () => refreshSavedDiagrams(connectionId));
     document.getElementById("diagram-view-modal").addEventListener("click", (e) => {
       if (e.target.id === "diagram-view-modal") closeDiagramViewModal();
     });

@@ -51,7 +51,6 @@
           <div class="ide-header">
             <h3>SQL IDE</h3>
             <div class="ide-header-actions">
-              <button id="open-saved-diagrams-btn" class="secondary btn-small" type="button">Saved Diagrams</button>
               <span id="connection-chip" class="chip"></span>
             </div>
           </div>
@@ -59,6 +58,7 @@
           <div class="ide-tabs">
             <button id="tab-sql" class="tab-btn active" type="button">SQL Runner</button>
             <button id="tab-saved" class="tab-btn" type="button">Saved Queries</button>
+            <button id="tab-diagrams" class="tab-btn" type="button">Saved Diagrams</button>
           </div>
 
           <section id="pane-sql" class="tab-pane">
@@ -85,6 +85,19 @@
 
           <section id="pane-saved" class="tab-pane hidden">
             <ul id="saved-query-list" class="saved-query-list"></ul>
+          </section>
+
+          <section id="pane-diagrams" class="tab-pane hidden">
+            <div class="saved-diagrams-block saved-diagrams-panel">
+              <div class="saved-diagrams-head">
+                <h4>Saved Diagrams</h4>
+                <button id="workspace-refresh-diagrams-btn" class="secondary btn-small" type="button">Refresh</button>
+              </div>
+              <p class="muted saved-diagrams-hint">Open and load any diagram without generating a new one.</p>
+              <ul id="saved-diagram-list-inline" class="saved-diagram-list">
+                <li class="muted">No saved diagrams for this workspace yet.</li>
+              </ul>
+            </div>
           </section>
         </main>
       </section>

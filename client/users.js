@@ -38,7 +38,7 @@ function openEditUserModal(user) {
 
 function buildRow(user) {
   const tr = document.createElement("tr");
-  tr.innerHTML = `<td>${user.id}</td><td>${user.username}</td><td>${user.provider}</td><td>${user.role}</td><td>${user.connection_count}</td><td>${user.max_connections}</td>`;
+  tr.innerHTML = `<td>${user.id}</td><td>${user.username}</td><td>${user.email || "-"}</td><td>${user.provider}</td><td>${user.role}</td><td>${user.connection_count}</td><td>${user.max_connections}</td>`;
 
   const actionTd = document.createElement("td");
   const editBtn = document.createElement("button");
@@ -106,18 +106,27 @@ function buildRow(user) {
   document.getElementById("create-user-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
-      await apiRequest("/api/admin/users", {
+      const created = await apiRequest("/api/admin/users", {
         method: "POST",
         body: JSON.stringify({
           username: document.getElementById("new-username").value,
+          email: document.getElementById("new-email").value,
           password: document.getElementById("new-password").value,
           role: document.getElementById("new-role").value,
           max_connections: Number(document.getElementById("new-max").value),
+          send_invite: document.getElementById("send-invite").checked,
         }),
       });
       closeModal("create-user-modal");
       await loadAll();
-      showSuccess("User created.");
+      if (created?.invitation?.setup_url) {
+        const inviteState = created.invitation.delivered
+          ? "Invite email sent."
+          : "Invite link created (delivery webhook not configured).";
+        showSuccess(`${inviteState} Setup URL: ${created.invitation.setup_url}`);
+      } else {
+        showSuccess("User created.");
+      }
     } catch (err) {
       showError(err.message);
     }

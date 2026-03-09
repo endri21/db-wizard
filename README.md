@@ -57,6 +57,29 @@ If omitted, the app falls back to `SESSION_SECRET` (or a local dev fallback), bu
 - `/` → Login / Register / OAuth entry
 - `/dashboard` → Connection management
 - `/workspace/:id` → SQL IDE for one connection
+- `/set-password?token=...` → Password setup page for invited users
+- `/confirm-email?token=...` → Email confirmation page for self-registration
+
+## Admin invite flow (email + user-defined password)
+
+- Admin can create a local user with **email** and no initial password.
+- Server creates a one-time password setup token and builds a setup URL.
+- The app can send invite emails by POSTing payloads to `EMAIL_DELIVERY_WEBHOOK_URL`.
+- If no webhook is configured, the API still returns the setup URL so admin can share it manually.
+
+Related env vars:
+
+- `APP_BASE_URL` (used to build setup links)
+- `EMAIL_DELIVERY_WEBHOOK_URL`
+- `EMAIL_FROM`
+- `PASSWORD_SETUP_EXPIRES_HOURS`
+
+## Self registration email confirmation
+
+- Self-registration now requires **username + email + password**.
+- New self-registered users are created with role **basic** and limited to **2** DB connections.
+- User must confirm email via the received link before login is allowed.
+- Confirmation expiry is controlled by `EMAIL_CONFIRM_EXPIRES_HOURS`.
 
 ## Run
 
@@ -77,6 +100,14 @@ If you run `npm run db:init` without setting env vars, the app now falls back to
 You can still override with `APP_DATABASE_URL` or `DATABASE_URL`.
 
 ## Database initialization and seed
+
+For deployment/startup auto-seeding by the application itself, set:
+
+```bash
+SEED_ON_STARTUP=true
+```
+
+When enabled, `server/index.js` runs `store.init()` then executes the seed flow before opening the HTTP port.
 
 ### Fix for `no pg_hba.conf entry ... no encryption`
 

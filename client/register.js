@@ -14,10 +14,14 @@
           method: "POST",
           body: JSON.stringify({
             username: form.get("username"),
+            email: form.get("email"),
             password: form.get("password"),
           }),
         });
-        window.location.href = "/?registered=1";
+        showSuccess("Registration submitted. Check your email and confirm before login.");
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 1200);
       } catch (err) {
         showError(err.message);
       }
