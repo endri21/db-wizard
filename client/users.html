@@ -33,6 +33,10 @@
         </header>
 
         <main class="panel portal-content portal-content-full">
+          <div id="users-loading" class="loading-overlay hidden" aria-live="polite">
+            <div class="spinner"></div>
+            <span>Processing request…</span>
+          </div>
           <p id="forbidden-text" class="warning-text hidden">Admin access required to manage users.</p>
           <div id="users-panel" class="hidden">
             <div class="portal-section-header section-actions" style="margin-bottom:.55rem;">

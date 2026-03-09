@@ -497,6 +497,18 @@ app.put("/api/admin/users/:id", requireAdmin, async (req, res) => {
   res.json(updated);
 });
 
+app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  const targetUserId = Number(req.params.id);
+  if (!Number.isFinite(targetUserId)) return res.status(400).json({ error: "Invalid user id." });
+  if (targetUserId === Number(req.user.id)) {
+    return res.status(400).json({ error: "You cannot delete your own account." });
+  }
+
+  const deleted = await store.deleteUserById(targetUserId);
+  if (!deleted) return res.status(404).json({ error: "User not found." });
+  return res.json({ message: "User deleted." });
+});
+
 
 app.post("/api/connections/test", requireAuth, async (req, res) => {
   const { name = "test", engine, connection_string, server, port, database_name, db_username, db_password } = req.body;

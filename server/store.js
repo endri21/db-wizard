@@ -282,6 +282,11 @@ async function updateUserAdmin(userId, { role, max_connections }) {
   return rows[0] || null;
 }
 
+async function deleteUserById(userId) {
+  const result = await getPool().query("DELETE FROM users WHERE id = $1", [Number(userId)]);
+  return result.rowCount > 0;
+}
+
 async function updateUserPassword(userId, password_hash) {
   const { rows } = await getPool().query(
     `UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id, username, email, provider, role, max_connections, created_at`,
@@ -545,6 +550,7 @@ module.exports = {
   deleteSavedQuery,
   listUsersForAdmin,
   updateUserAdmin,
+  deleteUserById,
   updateUserPassword,
   createPasswordSetupToken,
   findPasswordSetupToken,
