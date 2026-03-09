@@ -74,6 +74,23 @@ Related env vars:
 - `EMAIL_FROM`
 - `PASSWORD_SETUP_EXPIRES_HOURS`
 
+### SMTP support (Exchange / Gmail)
+
+DB Wizard supports direct SMTP delivery in addition to webhook delivery.
+
+Use these env vars:
+
+- `EMAIL_USE_SMTP=true` (default)
+- `SMTP_HOST`
+- `SMTP_PORT` (587 for STARTTLS or 465 for implicit TLS)
+- `SMTP_SECURE` (`true` for 465)
+- `SMTP_REQUIRE_TLS`
+- `SMTP_TLS_REJECT_UNAUTHORIZED`
+- `SMTP_USER`
+- `SMTP_PASS`
+
+If SMTP is configured, email sends through SMTP first (default). If SMTP is not configured or disabled, webhook delivery is used as fallback.
+
 ## Self registration email confirmation
 
 - Self-registration now requires **username + email + password**.
