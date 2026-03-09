@@ -64,18 +64,25 @@ async function deliverByWebhook({ to, from, subject, text, html, meta }) {
   try {
     parsed = new URL(webhook);
   } catch {
-    throw new Error("EMAIL_DELIVERY_WEBHOOK_URL is invalid.");
+    return { delivered: false, reason: "EMAIL_DELIVERY_WEBHOOK_URL is invalid." };
   }
 
-  const response = await fetch(parsed.toString(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ to, from, subject, text, html, meta }),
-  });
+  try {
+    const response = await fetch(parsed.toString(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ to, from, subject, text, html, meta }),
+    });
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Webhook email delivery failed (${response.status}): ${body || response.statusText}`);
+    if (!response.ok) {
+      const body = await response.text();
+      return {
+        delivered: false,
+        reason: `Webhook email delivery failed (${response.status}): ${body || response.statusText}`,
+      };
+    }
+  } catch (err) {
+    return { delivered: false, reason: `Webhook delivery error: ${err.message}` };
   }
 
   return { delivered: true, channel: "webhook" };
@@ -85,13 +92,17 @@ async function deliverBySmtp({ to, from, subject, text, html }) {
   const transport = getSmtpTransport();
   if (!transport) return { delivered: false, reason: "SMTP not configured" };
 
-  await transport.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html,
-  });
+  try {
+    await transport.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    });
+  } catch (err) {
+    return { delivered: false, reason: `SMTP delivery error: ${err.message}` };
+  }
 
   return { delivered: true, channel: "smtp" };
 }
