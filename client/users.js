@@ -106,26 +106,25 @@ function buildRow(user) {
   document.getElementById("create-user-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
-      const created = await apiRequest("/api/admin/users", {
+      const payload = {
+        email: document.getElementById("new-email").value,
+        role: document.getElementById("new-role").value,
+        max_connections: Number(document.getElementById("new-max").value),
+      };
+
+      const created = await apiRequest("/api/admin/invites", {
         method: "POST",
-        body: JSON.stringify({
-          username: document.getElementById("new-username").value,
-          email: document.getElementById("new-email").value,
-          password: document.getElementById("new-password").value,
-          role: document.getElementById("new-role").value,
-          max_connections: Number(document.getElementById("new-max").value),
-          send_invite: document.getElementById("send-invite").checked,
-        }),
+        body: JSON.stringify(payload),
       });
       closeModal("create-user-modal");
       await loadAll();
-      if (created?.invitation?.setup_url) {
+      if (created?.invitation?.invite_url) {
         const inviteState = created.invitation.delivered
           ? "Invite email sent."
-          : "Invite link created (delivery webhook not configured).";
-        showSuccess(`${inviteState} Setup URL: ${created.invitation.setup_url}`);
+          : "Invite link created (delivery not configured).";
+        showSuccess(`${inviteState} Invite URL: ${created.invitation.invite_url}`);
       } else {
-        showSuccess("User created.");
+        showSuccess("Invite created.");
       }
     } catch (err) {
       showError(err.message);

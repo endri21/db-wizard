@@ -46,6 +46,14 @@ function buildPasswordSetupMessage({ username, setupUrl, expiresHours }) {
   };
 }
 
+function buildUserInviteMessage({ inviteUrl, expiresMinutes }) {
+  return {
+    subject: "You are invited to DB Wizard",
+    text: `You have been invited to join DB Wizard.\nCreate your account using this link: ${inviteUrl}\n\nThis link expires in ${expiresMinutes} minute(s).`,
+    html: `<p>You have been invited to join DB Wizard.</p><p><a href="${inviteUrl}">Create your account</a></p><p>This link expires in ${expiresMinutes} minute(s).</p>`,
+  };
+}
+
 async function deliverByWebhook({ to, from, subject, text, html, meta }) {
   const webhook = String(process.env.EMAIL_DELIVERY_WEBHOOK_URL || "").trim();
   if (!webhook) {
@@ -133,6 +141,27 @@ async function sendInviteEmail({ to, username, setupUrl, expiresHours = 24 }) {
   return { delivered: true, channel: delivery.channel };
 }
 
+async function sendUserInviteEmail({ to, inviteUrl, expiresMinutes = 30 }) {
+  const from = String(process.env.EMAIL_FROM || "no-reply@db-wizard.local").trim();
+  const message = buildUserInviteMessage({ inviteUrl, expiresMinutes });
+
+  const delivery = await deliverEmail({
+    to,
+    from,
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+    meta: { type: "user_invite" },
+  });
+
+  if (!delivery.delivered) {
+    console.log(`[user-invite] no delivery channel configured. Invite link for ${to}: ${inviteUrl}`);
+    return { delivered: false, reason: delivery.reason, inviteUrl };
+  }
+
+  return { delivered: true, channel: delivery.channel };
+}
+
 async function sendEmailConfirmation({ to, username, confirmUrl, expiresHours = 24 }) {
   const from = String(process.env.EMAIL_FROM || "no-reply@db-wizard.local").trim();
   const subject = "Confirm your DB Wizard email";
@@ -156,4 +185,4 @@ async function sendEmailConfirmation({ to, username, confirmUrl, expiresHours = 
   return { delivered: true, channel: delivery.channel };
 }
 
-module.exports = { sendInviteEmail, sendEmailConfirmation };
+module.exports = { sendInviteEmail, sendEmailConfirmation, sendUserInviteEmail };

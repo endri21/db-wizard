@@ -10,7 +10,7 @@ const cors = require("cors");
 const store = require("./store");
 const { listTables, listRelationships, listTableColumns, runQuery } = require("./dbClients");
 const { ensureReadOnlyQuery } = require("./queryGuard");
-const { sendInviteEmail, sendEmailConfirmation } = require("./mailer");
+const { sendEmailConfirmation, sendUserInviteEmail } = require("./mailer");
 const { runSeed } = require("./seed");
 const { configurePassport, passport } = require("./auth");
 
@@ -124,6 +124,7 @@ app.post("/api/register", async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "").trim();
+  const inviteToken = String(req.body?.invite_token || "").trim();
   if (!username || !email || !password) {
     return res.status(400).json({ error: "Username, email, and password are required." });
   }
@@ -131,8 +132,23 @@ app.post("/api/register", async (req, res) => {
   if (await findUserByUsername(username)) {
     return res.status(400).json({ error: "Username already exists." });
   }
-  if (!(await store.roleExists("basic"))) {
-    return res.status(500).json({ error: "Default basic role is missing." });
+  let role = "basic";
+  let max_connections = 2;
+  if (inviteToken) {
+    const invite = await store.findUserInviteToken(inviteToken);
+    if (!invite) return res.status(404).json({ error: "Invalid or expired invite link." });
+    if (new Date(invite.expires_at).getTime() < Date.now()) {
+      await store.deleteUserInviteToken(inviteToken);
+      return res.status(410).json({ error: "This invite link has expired." });
+    }
+    if (String(invite.email || "").toLowerCase() !== email) {
+      return res.status(400).json({ error: "Email does not match invite." });
+    }
+    role = String(invite.role || "basic").toLowerCase();
+    max_connections = Number(invite.max_connections || 2);
+  }
+  if (!(await store.roleExists(role))) {
+    return res.status(500).json({ error: `Required role is missing: ${role}` });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -142,9 +158,11 @@ app.post("/api/register", async (req, res) => {
     email_verified: false,
     password_hash: passwordHash,
     provider: "local",
-    role: "basic",
-    max_connections: 2,
+    role,
+    max_connections,
   });
+
+  if (inviteToken) await store.deleteUserInviteToken(inviteToken);
 
   const token = crypto.randomBytes(32).toString("hex");
   const expiresHours = Number(process.env.EMAIL_CONFIRM_EXPIRES_HOURS || 24);
@@ -160,6 +178,20 @@ app.post("/api/register", async (req, res) => {
     delivered: Boolean(delivery?.delivered),
     confirmation_url: confirmUrl,
   });
+});
+
+app.post("/api/invites/validate", async (req, res) => {
+  const token = String(req.body?.token || "").trim();
+  if (!token) return res.status(400).json({ error: "Token is required." });
+
+  const invite = await store.findUserInviteToken(token);
+  if (!invite) return res.status(404).json({ error: "Invalid or expired invite link." });
+  if (new Date(invite.expires_at).getTime() < Date.now()) {
+    await store.deleteUserInviteToken(token);
+    return res.status(410).json({ error: "This invite link has expired." });
+  }
+
+  return res.json({ email: invite.email, role: invite.role, max_connections: invite.max_connections });
 });
 
 app.post("/api/login", async (req, res) => {
@@ -309,13 +341,12 @@ app.post("/api/admin/users", requireAdmin, async (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const role = String(req.body?.role || "user").trim().toLowerCase();
   const max_connections = Number(req.body?.max_connections || 5);
-  const shouldSendInvite = req.body?.send_invite !== false;
 
   if (!username) {
     return res.status(400).json({ error: "Username is required." });
   }
-  if (!password && !email) {
-    return res.status(400).json({ error: "Provide password or email for invite flow." });
+  if (!password) {
+    return res.status(400).json({ error: "Password is required for direct user creation. Use invite flow otherwise." });
   }
   if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
     return res.status(400).json({ error: "max_connections must be between 1 and 200." });
@@ -337,24 +368,6 @@ app.post("/api/admin/users", requireAdmin, async (req, res) => {
     max_connections,
   });
 
-  let invitation = null;
-  if (!password && email && shouldSendInvite) {
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresHours = Number(process.env.PASSWORD_SETUP_EXPIRES_HOURS || 24);
-    const expiresAt = new Date(Date.now() + Math.max(1, expiresHours) * 60 * 60 * 1000);
-    await store.createPasswordSetupToken({ token, user_id: user.id, expires_at: expiresAt.toISOString() });
-
-    const baseUrl = String(process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
-    const setupUrl = `${baseUrl}/set-password?token=${encodeURIComponent(token)}`;
-    const delivery = await sendInviteEmail({ to: email, username, setupUrl, expiresHours });
-    invitation = {
-      setup_url: setupUrl,
-      expires_at: expiresAt.toISOString(),
-      delivered: Boolean(delivery?.delivered),
-      reason: delivery?.reason || null,
-    };
-  }
-
   res.status(201).json({
     id: user.id,
     username: user.username,
@@ -362,7 +375,39 @@ app.post("/api/admin/users", requireAdmin, async (req, res) => {
     provider: user.provider,
     role: user.role,
     max_connections: user.max_connections,
-    invitation,
+    invitation: null,
+  });
+});
+
+app.post("/api/admin/invites", requireAdmin, async (req, res) => {
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const role = String(req.body?.role || "basic").trim().toLowerCase();
+  const max_connections = Number(req.body?.max_connections || 2);
+  if (!email) return res.status(400).json({ error: "Email is required." });
+  if (!(await store.roleExists(role))) return res.status(400).json({ error: "Selected role does not exist." });
+  if (!Number.isFinite(max_connections) || max_connections < 1 || max_connections > 200) {
+    return res.status(400).json({ error: "max_connections must be between 1 and 200." });
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresMinutes = Number(process.env.USER_INVITE_EXPIRES_MINUTES || 30);
+  const expiresAt = new Date(Date.now() + Math.max(5, expiresMinutes) * 60 * 1000);
+  await store.createUserInviteToken({ token, email, role, max_connections, expires_at: expiresAt.toISOString() });
+
+  const baseUrl = String(process.env.APP_BASE_URL || `${req.protocol}://${req.get("host")}`).replace(/\/+$/, "");
+  const inviteUrl = `${baseUrl}/register?invite=${encodeURIComponent(token)}`;
+  const delivery = await sendUserInviteEmail({ to: email, inviteUrl, expiresMinutes });
+
+  return res.status(201).json({
+    email,
+    role,
+    max_connections,
+    invitation: {
+      invite_url: inviteUrl,
+      expires_at: expiresAt.toISOString(),
+      delivered: Boolean(delivery?.delivered),
+      reason: delivery?.reason || null,
+    },
   });
 });
 

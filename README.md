@@ -98,6 +98,12 @@ If SMTP is configured, email sends through SMTP first (default). If SMTP is not 
 - User must confirm email via the received link before login is allowed.
 - Confirmation expiry is controlled by `EMAIL_CONFIRM_EXPIRES_HOURS`.
 
+## Admin invite links for users that do not yet exist
+
+- Admin can send an invite link to an email address via `/api/admin/invites`.
+- The invited person opens `/register?invite=<token>` and completes account creation.
+- Invite tokens expire in **30 minutes** by default (config: `USER_INVITE_EXPIRES_MINUTES`).
+
 ## Run
 
 ```bash

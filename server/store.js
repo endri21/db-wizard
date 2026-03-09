@@ -121,6 +121,15 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS user_invite_tokens (
+      token TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL,
+      max_connections INTEGER NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS max_connections INTEGER NOT NULL DEFAULT 5;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
@@ -339,6 +348,30 @@ async function verifyUserEmail(userId) {
   return rows[0] || null;
 }
 
+async function createUserInviteToken({ token, email, role, max_connections, expires_at }) {
+  const { rows } = await getPool().query(
+    `INSERT INTO user_invite_tokens (token, email, role, max_connections, expires_at)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING token, email, role, max_connections, expires_at, created_at`,
+    [token, String(email || "").toLowerCase(), String(role || "user").toLowerCase(), Number(max_connections), expires_at]
+  );
+  return rows[0] || null;
+}
+
+async function findUserInviteToken(token) {
+  const { rows } = await getPool().query(
+    `SELECT token, email, role, max_connections, expires_at, created_at
+     FROM user_invite_tokens
+     WHERE token = $1`,
+    [token]
+  );
+  return rows[0] || null;
+}
+
+async function deleteUserInviteToken(token) {
+  await getPool().query("DELETE FROM user_invite_tokens WHERE token = $1", [token]);
+}
+
 async function findConnectionByIdAndUser(connectionId, userId, options = {}) {
   const { rows } = await getPool().query(
     "SELECT * FROM db_connections WHERE id = $1 AND user_id = $2",
@@ -520,4 +553,7 @@ module.exports = {
   findEmailConfirmToken,
   deleteEmailConfirmToken,
   verifyUserEmail,
+  createUserInviteToken,
+  findUserInviteToken,
+  deleteUserInviteToken,
 };
